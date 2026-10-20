@@ -4,7 +4,9 @@ A study app for the **CompTIA CySA+ (CS0-003)** exam, built with [Claude Code](h
 
 **Live demo:** https://asyouwish114.github.io/cysa-study-desk/
 
-<!-- Add a screenshot: docs/screenshot.png -->
+| Readiness overview | Practice set | Flashcards |
+|---|---|---|
+| ![Overview: weighted readiness and exam domains](docs/overview.png) | ![Practice: scenario question](docs/practice.png) | ![Flashcards](docs/flashcards.png) |
 
 ## Features
 - **Readiness overview.** Accuracy in each of the four exam domains, weighted by how much of the exam
@@ -14,7 +16,7 @@ A study app for the **CompTIA CySA+ (CS0-003)** exam, built with [Claude Code](h
   Answer with the A-D or 1-4 keys.
 - **Flashcards.** 32 cards on key terms, ports, frameworks and metrics, each marked "known" or "still learning".
 - **AI tutor and question generator.** Available when the page is hosted as a claude.ai artifact.
-  Elsewhere these features hide themselves.
+  Elsewhere the Tutor tab and AI buttons are hidden.
 - Light and dark themes, a mobile layout, and progress saved in the browser.
 
 ## Run it
