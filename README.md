@@ -24,6 +24,11 @@ A study app for the **CompTIA CySA+ (CS0-003)** exam, built with [Claude Code](h
   severity, sub-scores and a plain-language meaning for each choice, or paste a vector to score it. Then score
   eight realistic vulnerability scenarios and get graded metric by metric with the reasoning. The scoring engine
   follows the FIRST specification, including its rounding rules, and is unit-tested against published scores.
+
+  | Calculator | Graded challenge |
+  |---|---|
+  | ![CVSS calculator with live score, severity scale and metric meanings](docs/cvss-calculator.png) | ![A graded CVSS challenge comparing the student vector to the correct one, metric by metric](docs/cvss-challenge.png) |
+
 - **Flashcards.** 32 cards on key terms, ports, frameworks and metrics, each marked "known" or "still learning".
 - **AI tutor and question generator.** Available when the page is hosted as a claude.ai artifact.
   Elsewhere the Tutor tab and AI buttons are hidden.
