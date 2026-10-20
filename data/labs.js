@@ -127,5 +127,30 @@ window.CYSA.labs = [
         x: "The attacker has working admin credentials and is moving toward domain admin, so contain both hosts and the account, then scope the spread. If you need to verify with the user, do it out of band, because the attacker may be reading their email. Uninstalling tools and restoring a backup don't remove the attacker's access." }
     ],
     debrief: "Valid-account lateral movement is hard to stop by blocking tools. Detect the chain instead: an admin network logon from a workstation, then 5145 on ADMIN$, then 7045 for a new service, then discovery commands. Reduce the risk with tiered admin accounts and LAPS."
+  },
+  {
+    id: "lab-kerberoasting", d: "ir", title: "A burst of service tickets", source: "Domain controller Security log · DC01",
+    brief: "A detection rule fired on DC01 for unusual Kerberos ticket activity. Review the Kerberos events for the day.",
+    cols: ["Time", "Event ID", "Account", "Service name", "Client address", "Ticket encryption"],
+    rows: [
+      { f: ["08:52:10", "4768", "tlee@CORP.EXAMPLE", "krbtgt", "::ffff:10.0.2.45", "0x12 (AES256)"], note: "tlee gets a ticket-granting ticket at morning logon from their own workstation, WS-045. Normal." },
+      { f: ["09:12:03", "4769", "jsmith@CORP.EXAMPLE", "FS01$", "::ffff:10.0.2.31", "0x12 (AES256)"], note: "A user opening a file share. Modern services use AES tickets. Normal." },
+      { f: ["11:03:15", "4769", "tlee@CORP.EXAMPLE", "svc_sql", "::ffff:10.0.2.45", "0x17 (RC4-HMAC)"], bad: true, note: "A service ticket for a service account, using RC4 encryption. RC4 tickets are much faster to crack offline, so attack tools ask for them on purpose." },
+      { f: ["11:03:15", "4769", "tlee@CORP.EXAMPLE", "svc_backup", "::ffff:10.0.2.45", "0x17 (RC4-HMAC)"], bad: true, note: "Same second, a different service account, RC4 again." },
+      { f: ["11:03:16", "4769", "tlee@CORP.EXAMPLE", "svc_web", "::ffff:10.0.2.45", "0x17 (RC4-HMAC)"], bad: true, note: "tlee has no reason to use these services. The tool is requesting a ticket for every account with an SPN." },
+      { f: ["11:03:16", "4769", "tlee@CORP.EXAMPLE", "svc_sharepoint", "::ffff:10.0.2.45", "0x17 (RC4-HMAC)"], bad: true, note: "Kerberoasting (ATT&CK T1558.003): any domain user can request these tickets, then crack the service account's password offline without generating more logs." },
+      { f: ["11:03:17", "4769", "tlee@CORP.EXAMPLE", "svc_monitor", "::ffff:10.0.2.45", "0x17 (RC4-HMAC)"], bad: true, note: "Five service accounts in two seconds. No human works that fast." },
+      { f: ["11:20:44", "4769", "akim@CORP.EXAMPLE", "SQL01$", "::ffff:10.0.2.60", "0x12 (AES256)"], note: "A user connecting to the SQL server with an AES ticket. Normal." },
+      { f: ["11:21:02", "4769", "rpatel@CORP.EXAMPLE", "svc_reports", "::ffff:10.0.2.77", "0x17 (RC4-HMAC)"], note: "A decoy: a finance user opening the legacy reporting app they use every day, which only supports RC4. One RC4 ticket for a service the user really uses isn't Kerberoasting. It's still worth migrating svc_reports to AES." },
+      { f: ["16:47:30", "4768", "svc_sql@CORP.EXAMPLE", "krbtgt", "::ffff:10.0.2.45", "0x12 (AES256)"], bad: true, note: "Hours later, svc_sql logs on from tlee's workstation. A service account should only authenticate from its own server. Its password was cracked and is now being used." },
+      { f: ["16:47:31", "4769", "svc_sql@CORP.EXAMPLE", "FS01$", "::ffff:10.0.2.45", "0x12 (AES256)"], bad: true, note: "The stolen svc_sql identity is used to reach the file server, something the SQL service never does." }
+    ],
+    tasks: [
+      { q: "What attack does this log show?", o: ["Kerberoasting: tlee requested RC4 service tickets to crack offline, and svc_sql's password was cracked and used", "A golden ticket attack with a forged TGT", "AS-REP roasting of accounts that don't require pre-authentication", "Pass-the-ticket with a ticket stolen from LSASS"], a: 0,
+        x: "A burst of 4769 requests for many service accounts with RC4 encryption, followed by a service account logging on from that same workstation, is Kerberoasting. AS-REP roasting shows up as 4768 events for accounts without pre-authentication, not as 4769 service tickets. A golden ticket would let the attacker skip the DC for ticket requests entirely." },
+      { q: "What should the analyst do first?", o: ["Reset svc_sql to a long random password (or move it to a gMSA), isolate WS-045, investigate tlee's account, and review what svc_sql accessed", "Reset the krbtgt password twice", "Block Kerberos port 88 at the internal firewall", "Remove the SPNs from every service account"], a: 0,
+        x: "The cracked svc_sql password is in use right now, so contain it and the workstation it's coming from, then scope the damage. Resetting krbtgt twice is the fix for golden tickets. Blocking port 88 breaks domain authentication, and removing SPNs breaks the services without removing the attacker." }
+    ],
+    debrief: "Root cause: service accounts with human-chosen passwords that can be cracked, and RC4 still allowed. Fix: use group Managed Service Accounts (gMSA) or 25+ character random passwords, and enforce AES-only Kerberos. Detect it by alerting when one account requests many 4769 tickets with encryption type 0x17 in a short window, or plant a honeypot account with an SPN that nobody should ever request."
   }
 ];
