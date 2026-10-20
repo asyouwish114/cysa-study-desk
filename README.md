@@ -2,7 +2,7 @@
 
 A study app for the **CompTIA CySA+ (CS0-003)** exam, built with [Claude Code](https://claude.com/claude-code).
 
-**Live demo:** _add your GitHub Pages link here_
+**Live demo:** https://asyouwish114.github.io/cysa-study-desk/
 
 <!-- Add a screenshot: docs/screenshot.png -->
 
