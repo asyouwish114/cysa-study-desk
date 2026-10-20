@@ -14,6 +14,9 @@ A study app for the **CompTIA CySA+ (CS0-003)** exam, built with [Claude Code](h
 - **Practice sets.** 40 scenario-based questions with explanations. Filter by domain, retry the ones you
   missed, or practice only the ones you haven't seen. Draws from all domains follow the exam weighting.
   Answer with the A-D or 1-4 keys.
+- **Log analysis labs.** Five performance-based investigations (RDP brute force, password spraying,
+  C2 beaconing, SQL injection, PsExec lateral movement). Flag the malicious lines in realistic logs, identify
+  the attack and choose the response, then get graded with a note on every line and an ATT&CK-referenced debrief.
 - **Flashcards.** 32 cards on key terms, ports, frameworks and metrics, each marked "known" or "still learning".
 - **AI tutor and question generator.** Available when the page is hosted as a claude.ai artifact.
   Elsewhere the Tutor tab and AI buttons are hidden.
@@ -36,6 +39,7 @@ js/app.js               app logic: state, practice, flashcards, tutor
 data/domains.js         exam domains and weights
 data/questions.js       question bank
 data/flashcards.js      flashcards
+data/labs.js            log analysis labs
 scripts/validate-data.mjs   schema and consistency checks (run in CI)
 .github/workflows/      GitHub Actions: validates data on every push and PR
 .claude/                Claude Code project configuration (see below)
@@ -50,9 +54,10 @@ This project is also a demonstration of an AI-assisted development workflow:
   and a validator plus CI.
 - **`CLAUDE.md`** records the architecture, data rules and conventions, so every Claude Code session
   starts with the same context and follows the same rules.
-- **A custom skill** (`.claude/skills/add-questions`) is a repeatable workflow for growing the question
-  bank. It finds coverage gaps in a domain, writes exam-style questions to a defined standard, and
-  validates them.
+- **Custom skills** in `.claude/skills/` are repeatable workflows for growing the content. `add-questions`
+  finds coverage gaps in a domain and writes exam-style questions to a defined standard. `add-lab` designs
+  a new log investigation with realistic event IDs, benign distractors and ATT&CK-mapped notes. Both
+  finish by validating their output.
 - **A hook** (`.claude/settings.json`) runs the data validator automatically whenever Claude edits a
   file under `data/`. A broken question gets caught and fixed in the same turn.
 - **CI** runs the same validator on GitHub, so the guardrails apply to human and AI changes alike.
