@@ -301,6 +301,9 @@ function hideAI() {
   $("q-ask").hidden = true;
   $("t-off").hidden = false;
   $("t-form").hidden = true; $("t-chips").hidden = true;
+  // Outside claude.ai the tutor can't work, so drop the tab instead of showing a dead end.
+  document.querySelector('nav.tabs [data-tab="tutor"]').hidden = true;
+  if (!$("v-tutor").hidden) showTab("overview");
 }
 async function connectSample() {
   if (!window.claude) { hideAI(); return; }
