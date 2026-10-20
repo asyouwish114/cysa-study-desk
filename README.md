@@ -17,6 +17,9 @@ A study app for the **CompTIA CySA+ (CS0-003)** exam, built with [Claude Code](h
 - **Log analysis labs.** Five performance-based investigations (RDP brute force, password spraying,
   C2 beaconing, SQL injection, PsExec lateral movement). Flag the malicious lines in realistic logs, identify
   the attack and choose the response, then get graded with a note on every line and an ATT&CK-referenced debrief.
+
+  <img src="docs/log-lab.png" alt="A graded log lab: caught, missed and wrongly flagged lines with per-line notes, answer feedback and the score breakdown" width="560">
+
 - **Flashcards.** 32 cards on key terms, ports, frameworks and metrics, each marked "known" or "still learning".
 - **AI tutor and question generator.** Available when the page is hosted as a claude.ai artifact.
   Elsewhere the Tutor tab and AI buttons are hidden.
