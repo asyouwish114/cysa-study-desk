@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "case \"$(cat)\" in *data/*.js*|*data\\\\\\\\*.js*) command -v node >/dev/null 2>&1 || exit 0; node \"$CLAUDE_PROJECT_DIR/scripts/validate-data.mjs\" 1>&2 || exit 2 ;; esac"
+          }
+        ]
+      }
+    ]
+  }
+}
