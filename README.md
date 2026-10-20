@@ -1,0 +1,60 @@
+# CySA+ Study Desk
+
+A study app for the **CompTIA CySA+ (CS0-003)** exam, built with [Claude Code](https://claude.com/claude-code).
+
+**Live demo:** _add your GitHub Pages link here_
+
+<!-- Add a screenshot: docs/screenshot.png -->
+
+## Features
+- **Readiness overview.** Accuracy in each of the four exam domains, weighted by how much of the exam
+  each one covers (33 / 30 / 20 / 17%), with your weakest domain flagged.
+- **Practice sets.** 40 scenario-based questions with explanations. Filter by domain, retry the ones you
+  missed, or practice only the ones you haven't seen. Draws from all domains follow the exam weighting.
+  Answer with the A-D or 1-4 keys.
+- **Flashcards.** 32 cards on key terms, ports, frameworks and metrics, each marked "known" or "still learning".
+- **AI tutor and question generator.** Available when the page is hosted as a claude.ai artifact.
+  Elsewhere these features hide themselves.
+- Light and dark themes, a mobile layout, and progress saved in the browser.
+
+## Run it
+No install and no build. Open `index.html` in a browser, or serve the folder with any static host
+(GitHub Pages works as-is).
+
+To validate the study data (requires Node 18+):
+```sh
+node scripts/validate-data.mjs
+```
+
+## Project structure
+```
+index.html              page markup
+css/styles.css          design tokens (light + dark) and layout
+js/app.js               app logic: state, practice, flashcards, tutor
+data/domains.js         exam domains and weights
+data/questions.js       question bank
+data/flashcards.js      flashcards
+scripts/validate-data.mjs   schema and consistency checks (run in CI)
+.github/workflows/      GitHub Actions: validates data on every push and PR
+.claude/                Claude Code project configuration (see below)
+CLAUDE.md               project guide that Claude Code reads every session
+```
+
+## How I used Claude Code
+This project is also a demonstration of an AI-assisted development workflow:
+
+- **Prototype to project.** I started with a single-file prototype built as a claude.ai artifact, then
+  used Claude Code to restructure it into a maintainable static site, with data separated from logic
+  and a validator plus CI.
+- **`CLAUDE.md`** records the architecture, data rules and conventions, so every Claude Code session
+  starts with the same context and follows the same rules.
+- **A custom skill** (`.claude/skills/add-questions`) is a repeatable workflow for growing the question
+  bank. It finds coverage gaps in a domain, writes exam-style questions to a defined standard, and
+  validates them.
+- **A hook** (`.claude/settings.json`) runs the data validator automatically whenever Claude edits a
+  file under `data/`. A broken question gets caught and fixed in the same turn.
+- **CI** runs the same validator on GitHub, so the guardrails apply to human and AI changes alike.
+
+## Disclaimer
+This is an independent study aid. It is not affiliated with or endorsed by CompTIA. Exam details reflect
+CS0-003; check CompTIA's current exam objectives before you test.
