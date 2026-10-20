@@ -76,15 +76,25 @@ function validQ(q) {
   return q && typeof q.q === "string" && Array.isArray(q.o) && q.o.length === 4 && q.o.every(x => typeof x === "string")
     && Number.isInteger(q.a) && q.a >= 0 && q.a < 4 && DOMAINS[q.d] && typeof q.x === "string";
 }
+// Each attempted CVSS scenario counts toward Vulnerability Management as one answer, scored by the
+// share of metrics right on the latest try (older saves only have `best`).
+const CVSS_DOMAIN = "vm";
 function domainStats(d) {
-  let c = 0, t = 0;
+  let c = 0, t = 0, n = 0, cv = 0;
   for (const q of allQuestions()) {
     if (q.d !== d) continue;
     const r = state.answers[q.id];
-    if (r) { c += r.c; t += r.c + r.w; }
+    if (r) { c += r.c; t += r.c + r.w; n += r.c + r.w; }
   }
-  return { c, t, pct: t ? Math.round((c / t) * 100) : null };
+  if (d === CVSS_DOMAIN) {
+    for (const s of window.CYSA.cvssScenarios || []) {
+      const r = state.cvss[s.id];
+      if (r) { c += (r.last ?? r.best) / 8; t += 1; cv += 1; }
+    }
+  }
+  return { c, t, n, cv, pct: t ? Math.round((c / t) * 100) : null };
 }
+function practicedText(s) { return s.n + " answered" + (s.cv ? " · " + s.cv + " CVSS" : ""); }
 function readiness() {
   let sum = 0, wsum = 0;
   for (const d of DKEYS) { const s = domainStats(d); if (s.pct !== null) { sum += s.pct * DOMAINS[d].weight; wsum += DOMAINS[d].weight; } }
@@ -149,7 +159,7 @@ function renderOverview() {
     return `<div class="dom">
       <span class="num">${D.code}</span>
       <div style="min-width:0"><div class="name">${esc(D.name)} ${statusPill(s.pct)}</div>
-        <div class="sub">${D.weight}% of exam · ${s.t} answered</div>
+        <div class="sub">${D.weight}% of exam · ${practicedText(s)}</div>
         <div class="topics">${D.topics.map(t => `<span>${esc(t)}</span>`).join("")}</div></div>
       <div class="barcell"><div class="bar"><span style="width:${s.pct ?? 0}%"></span><i class="target"></i></div></div>
       <span class="pct">${s.pct === null ? "—" : s.pct + "%"}</span>
@@ -590,7 +600,7 @@ function gradeChallenge() {
   const mine = CV.score(ch.sel), real = CV.score(ans);
   ch.graded = true;
   const rec = state.cvss[s.id] || { best: 0, tries: 0 };
-  state.cvss[s.id] = { best: Math.max(rec.best, right), tries: rec.tries + 1 };
+  state.cvss[s.id] = { best: Math.max(rec.best, right), tries: rec.tries + 1, last: right };
   state.history.unshift({ t: Date.now(), label: "CVSS: " + s.title, c: right, n: 8 });
   state.history = state.history.slice(0, 30);
   save();
@@ -670,7 +680,7 @@ $("t-chips").innerHTML = CHIPS.map(c => `<button class="chip" type="button">${es
 $("t-chips").querySelectorAll(".chip").forEach(b => b.onclick = () => { $("t-input").value = b.textContent; sendTutor(); });
 
 function tutorRules() {
-  const scores = DKEYS.map(d => { const s = domainStats(d); return `${DOMAINS[d].code} ${DOMAINS[d].name} (${DOMAINS[d].weight}% of exam): ${s.pct === null ? "not practiced yet" : s.pct + "% over " + s.t + " answers"}`; }).join("\n");
+  const scores = DKEYS.map(d => { const s = domainStats(d); return `${DOMAINS[d].code} ${DOMAINS[d].name} (${DOMAINS[d].weight}% of exam): ${s.pct === null ? "not practiced yet" : s.pct + "% (" + practicedText(s) + ")"}`; }).join("\n");
   return `You are a patient, precise tutor for the CompTIA CySA+ exam (CS0-003). Keep answers focused and exam-relevant, under about 250 words unless asked for more. Use concrete SOC-analyst examples, name the relevant exam domain when useful, and end with a one-line exam tip when it fits. If you quiz the student, ask one question at a time and wait for their answer. Plain text with short paragraphs or "- " bullets; **bold** sparingly.
 
 The student's current practice accuracy:
