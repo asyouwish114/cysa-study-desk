@@ -20,6 +20,10 @@ A study app for the **CompTIA CySA+ (CS0-003)** exam, built with [Claude Code](h
 
   <img src="docs/log-lab.png" alt="A graded log lab: caught, missed and wrongly flagged lines with per-line notes, answer feedback and the score breakdown" width="560">
 
+- **CVSS v3.1 calculator and scoring challenges.** Build a vector metric by metric and get a live base score,
+  severity, sub-scores and a plain-language meaning for each choice, or paste a vector to score it. Then score
+  eight realistic vulnerability scenarios and get graded metric by metric with the reasoning. The scoring engine
+  follows the FIRST specification, including its rounding rules, and is unit-tested against published scores.
 - **Flashcards.** 32 cards on key terms, ports, frameworks and metrics, each marked "known" or "still learning".
 - **AI tutor and question generator.** Available when the page is hosted as a claude.ai artifact.
   Elsewhere the Tutor tab and AI buttons are hidden.
@@ -29,22 +33,27 @@ A study app for the **CompTIA CySA+ (CS0-003)** exam, built with [Claude Code](h
 No install and no build. Open `index.html` in a browser, or serve the folder with any static host
 (GitHub Pages works as-is).
 
-To validate the study data (requires Node 18+):
+Development checks (requires Node 18+, no dependencies to install):
 ```sh
-node scripts/validate-data.mjs
+npm run validate   # schema and consistency checks for all study data
+npm test           # unit tests for the CVSS scoring engine
+npm run check      # both
 ```
 
 ## Project structure
 ```
 index.html              page markup
 css/styles.css          design tokens (light + dark) and layout
-js/app.js               app logic: state, practice, flashcards, tutor
+js/app.js               app logic: state, practice, labs, CVSS, flashcards, tutor
+js/cvss.js              CVSS v3.1 scoring engine (no DOM, shared by the app and tests)
 data/domains.js         exam domains and weights
 data/questions.js       question bank
 data/flashcards.js      flashcards
 data/labs.js            log analysis labs
-scripts/validate-data.mjs   schema and consistency checks (run in CI)
-.github/workflows/      GitHub Actions: validates data on every push and PR
+data/cvss.js            CVSS scoring scenarios
+scripts/validate-data.mjs   schema and consistency checks
+tests/                  unit tests (node --test)
+.github/workflows/      GitHub Actions: validation and tests on every push and PR
 .claude/                Claude Code project configuration (see below)
 CLAUDE.md               project guide that Claude Code reads every session
 ```
@@ -63,7 +72,9 @@ This project is also a demonstration of an AI-assisted development workflow:
   finish by validating their output.
 - **A hook** (`.claude/settings.json`) runs the data validator automatically whenever Claude edits a
   file under `data/`. A broken question gets caught and fixed in the same turn.
-- **CI** runs the same validator on GitHub, so the guardrails apply to human and AI changes alike.
+- **Tests as a contract.** The CVSS engine is checked against published scores, so AI-written scoring
+  logic has to prove itself. CI runs the validator and the tests on every push, so the guardrails apply to
+  human and AI changes alike.
 
 ## Disclaimer
 This is an independent study aid. It is not affiliated with or endorsed by CompTIA. Exam details reflect

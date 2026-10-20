@@ -1,4 +1,4 @@
-name: Validate data
+name: Validate and test
 
 on:
   push:
@@ -13,5 +13,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-      - name: Validate questions, flashcards and domains
+      - name: Validate study data
         run: node scripts/validate-data.mjs
+      - name: Run unit tests
+        run: npm test
