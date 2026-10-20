@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CySA+ Study Desk</title>
+<meta name="description" content="Practice questions, flashcards, domain readiness tracking and an AI tutor for the CompTIA CySA+ (CS0-003) exam.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><h1>CySA+ Study Desk</h1><span class="code">CS0-003</span></div>
+    <div class="sync" id="sync"><i></i><span>Saved in this browser</span></div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="overview" aria-selected="true">Overview</button>
+      <button role="tab" data-tab="practice" aria-selected="false">Practice</button>
+      <button role="tab" data-tab="cards" aria-selected="false">Flashcards</button>
+      <button role="tab" data-tab="tutor" aria-selected="false">Tutor</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- OVERVIEW -->
+  <section class="view" id="v-overview">
+    <div class="panel hero">
+      <div>
+        <div class="label">Weighted readiness</div>
+        <h2 id="ready-head">Start with a 10-question set</h2>
+        <p id="ready-sub">Readiness is your accuracy in each domain, weighted by how much of the exam that domain covers. Aim for 80% or better in every domain before you book the exam.</p>
+        <div class="row" style="margin-top:14px">
+          <button class="btn primary" id="ov-start">Start practice</button>
+          <button class="btn" id="ov-weak">Drill weakest domain</button>
+        </div>
+      </div>
+      <div class="gauge" aria-label="Readiness gauge">
+        <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="var(--track)" stroke-width="10"/><circle id="gauge-arc" cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="326.7"/></svg>
+        <div class="val"><b id="gauge-val">—</b><span>of 100</span></div>
+      </div>
+    </div>
+
+    <div class="facts">
+      <div><span class="label">Questions</span><b>≤ 85</b></div>
+      <div><span class="label">Time</span><b>165 min</b></div>
+      <div><span class="label">Passing</span><b>750 / 900</b></div>
+      <div><span class="label">Formats</span><b>MCQ + PBQ</b></div>
+    </div>
+
+    <div class="panel">
+      <div class="row" style="justify-content:space-between;margin-bottom:6px">
+        <h3>Exam domains</h3>
+        <span class="label">Accuracy · line marks 80%</span>
+      </div>
+      <div class="domains" id="domains"></div>
+    </div>
+
+    <div class="panel">
+      <h3 style="margin-bottom:8px">Recent sessions</h3>
+      <div id="history"></div>
+    </div>
+  </section>
+
+  <!-- PRACTICE -->
+  <section class="view" id="v-practice" hidden>
+    <div class="panel" id="q-setup">
+      <h3 style="margin-bottom:12px">Build a practice set</h3>
+      <div class="row">
+        <label class="label" for="q-domain">Domain</label>
+        <select id="q-domain"></select>
+        <label class="label" for="q-count">Questions</label>
+        <select id="q-count"><option value="10">10</option><option value="20">20</option><option value="all">All available</option></select>
+        <label class="label" for="q-mode">Pool</label>
+        <select id="q-mode"><option value="all">All questions</option><option value="missed">Ones I missed</option><option value="new">Not yet seen</option></select>
+      </div>
+      <div class="row" style="margin-top:16px">
+        <button class="btn primary" id="q-start">Start set</button>
+        <span class="gen-note" id="pool-note"></span>
+      </div>
+      <div class="row" style="margin-top:18px;padding-top:16px;border-top:1px solid var(--line)" id="gen-row">
+        <div class="grow" style="min-width:0">
+          <div style="font-weight:600">Need more questions?</div>
+          <div class="gen-note" id="gen-status">Claude writes 5 new scenario questions for the selected domain and adds them to your bank.</div>
+        </div>
+        <button class="btn" id="q-gen">Generate 5 questions</button>
+      </div>
+    </div>
+
+    <div class="panel" id="q-run" hidden>
+      <div class="qhead">
+        <span class="tag" id="q-tag"></span>
+        <span class="mono" id="q-pos" style="color:var(--muted)"></span>
+      </div>
+      <div class="progress"><span id="q-prog" style="width:0"></span></div>
+      <p class="qtext" id="q-text"></p>
+      <div class="opts" id="q-opts"></div>
+      <div class="explain" id="q-exp" hidden>
+        <div class="verdict" id="q-verdict"></div>
+        <div id="q-why"></div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn small" id="q-ask">Explain it differently</button>
+        </div>
+        <div class="ai-out" id="q-ai"></div>
+      </div>
+      <div class="row" style="margin-top:18px;justify-content:space-between">
+        <button class="btn" id="q-quit">End set</button>
+        <button class="btn primary" id="q-next" disabled>Next</button>
+      </div>
+    </div>
+
+    <div class="panel" id="q-done" hidden>
+      <div class="label">Set complete</div>
+      <div class="row" style="align-items:baseline;margin:6px 0 14px">
+        <span class="score" id="d-score"></span><span id="d-detail" style="color:var(--muted)"></span>
+      </div>
+      <div id="d-breakdown"></div>
+      <div class="row" style="margin-top:16px">
+        <button class="btn primary" id="d-again">New set</button>
+        <button class="btn" id="d-missed">Retry the ones I missed</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- FLASHCARDS -->
+  <section class="view" id="v-cards" hidden>
+    <div class="deckbar">
+      <div class="row">
+        <label class="label" for="c-domain">Deck</label>
+        <select id="c-domain"></select>
+        <label class="label" for="c-filter">Show</label>
+        <select id="c-filter"><option value="learning">Still learning</option><option value="all">All cards</option></select>
+      </div>
+      <span class="mono" id="c-count" style="color:var(--muted)"></span>
+    </div>
+    <div class="card3d" id="card" tabindex="0" role="button" aria-label="Flip card">
+      <div class="inner">
+        <div class="face front"><span class="tag" id="c-dom"></span><div class="term" id="c-term"></div><div class="hint">Click or press Space to flip</div></div>
+        <div class="face back"><span class="tag" id="c-dom2"></span><div class="def" id="c-def"></div></div>
+      </div>
+    </div>
+    <div class="row" style="justify-content:space-between">
+      <button class="btn" id="c-prev">Previous</button>
+      <div class="row">
+        <button class="btn" id="c-again">Still learning</button>
+        <button class="btn primary" id="c-know">I know this</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- TUTOR -->
+  <section class="view" id="v-tutor" hidden>
+    <div class="panel" style="display:grid;gap:14px">
+      <div>
+        <h3>Ask the tutor</h3>
+        <p style="margin:4px 0 0;color:var(--muted)">Ask about any CySA+ objective. The tutor can see your domain scores, so you can ask it for a study plan too.</p>
+      </div>
+      <div class="notice" id="t-off" hidden>The tutor needs Claude, which isn't available in this view. Open the page on claude.ai while signed in to use it.</div>
+      <div class="chat" id="t-chat" aria-live="polite"></div>
+      <div class="chips" id="t-chips"></div>
+      <form class="composer" id="t-form">
+        <textarea id="t-input" rows="2" placeholder="e.g. How do I tell beaconing from normal keep-alive traffic?"></textarea>
+        <button class="btn primary" id="t-send" type="submit">Send</button>
+      </form>
+    </div>
+  </section>
+</main>
+
+<!-- Data first (each file adds to window.CYSA), then the app. Plain scripts so the page opens straight from disk. -->
+<script src="data/domains.js"></script>
+<script src="data/questions.js"></script>
+<script src="data/flashcards.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
