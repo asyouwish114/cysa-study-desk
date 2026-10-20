@@ -1,0 +1,14 @@
+{
+  "name": "cysa-study-desk",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Study app for the CompTIA CySA+ (CS0-003) exam: practice questions, log analysis labs, CVSS scoring practice and flashcards.",
+  "scripts": {
+    "test": "node --test",
+    "validate": "node scripts/validate-data.mjs",
+    "check": "npm run validate && npm test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
