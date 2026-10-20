@@ -7,7 +7,7 @@ import { dirname, join } from "node:path";
 import vm from "node:vm";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const files = ["data/domains.js", "data/questions.js", "data/flashcards.js"];
+const files = ["data/domains.js", "data/questions.js", "data/flashcards.js", "data/labs.js"];
 
 // The data files assign to window.CYSA, so run them in a sandbox with a fake window.
 const sandbox = { window: {} };
@@ -17,7 +17,7 @@ for (const f of files) {
   try { vm.runInContext(readFileSync(join(root, f), "utf8"), sandbox, { filename: f }); }
   catch (e) { errors.push(`${f}: does not load (${e.message})`); }
 }
-const { domains = {}, questions = [], flashcards = [] } = sandbox.window.CYSA || {};
+const { domains = {}, questions = [], flashcards = [], labs = [] } = sandbox.window.CYSA || {};
 const isText = v => typeof v === "string" && v.trim().length > 0;
 
 // Domains
@@ -63,10 +63,40 @@ flashcards.forEach((c, i) => {
   if (!isText(c.term) || !isText(c.def)) errors.push(`${at}: needs term and def`);
 });
 
+// Log labs
+const checkTask = (t, at) => {
+  if (!isText(t.q)) errors.push(`${at}: missing question`);
+  if (!Array.isArray(t.o) || t.o.length !== 4 || !t.o.every(isText)) errors.push(`${at}: needs exactly 4 non-empty options`);
+  else if (new Set(t.o.map(o => o.trim().toLowerCase())).size !== 4) errors.push(`${at}: options must be distinct`);
+  if (!Number.isInteger(t.a) || t.a < 0 || t.a > 3) errors.push(`${at}: answer index "a" must be 0-3`);
+  if (!isText(t.x)) errors.push(`${at}: missing explanation`);
+};
+const lIds = new Set();
+labs.forEach((l, i) => {
+  const at = `labs[${i}]${l && l.id ? ` (${l.id})` : ""}`;
+  if (!isText(l.id)) errors.push(`${at}: missing id`);
+  else if (lIds.has(l.id)) errors.push(`${at}: duplicate id`);
+  else lIds.add(l.id);
+  if (!domains[l.d]) errors.push(`${at}: unknown domain "${l.d}"`);
+  for (const k of ["title", "source", "brief", "debrief"]) if (!isText(l[k])) errors.push(`${at}: missing ${k}`);
+  const cols = Array.isArray(l.cols) && l.cols.length && l.cols.every(isText) ? l.cols.length : 0;
+  if (!cols) errors.push(`${at}: needs column headers in cols`);
+  if (!Array.isArray(l.rows) || l.rows.length < 4) return errors.push(`${at}: needs at least 4 log rows`);
+  l.rows.forEach((r, j) => {
+    const rat = `${at} rows[${j}]`;
+    if (!Array.isArray(r.f) || r.f.length !== cols) errors.push(`${rat}: has ${r.f?.length ?? 0} fields, expected ${cols}`);
+    if (r.bad && !isText(r.note)) errors.push(`${rat}: malicious rows need a note explaining why`);
+  });
+  if (!l.rows.some(r => r.bad)) errors.push(`${at}: no rows marked bad`);
+  if (l.rows.every(r => r.bad)) errors.push(`${at}: every row is bad; include benign lines as distractors`);
+  if (!Array.isArray(l.tasks) || !l.tasks.length) errors.push(`${at}: needs at least one task`);
+  else l.tasks.forEach((t, j) => checkTask(t, `${at} tasks[${j}]`));
+});
+
 if (errors.length) {
   console.error(`Data validation failed with ${errors.length} problem(s):`);
   for (const e of errors) console.error("  - " + e);
   process.exit(1);
 }
 const perDomain = keys.map(k => `${domains[k].code} ${questions.filter(q => q.d === k).length}`).join(", ");
-console.log(`OK: ${questions.length} questions (${perDomain}), ${flashcards.length} flashcards, ${keys.length} domains.`);
+console.log(`OK: ${questions.length} questions (${perDomain}), ${flashcards.length} flashcards, ${labs.length} labs, ${keys.length} domains.`);
