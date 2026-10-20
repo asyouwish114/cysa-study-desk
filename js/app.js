@@ -4,12 +4,12 @@
 (() => {
 "use strict";
 
-const { domains: DOMAINS, questions: BANK, flashcards: CARDS } = window.CYSA;
+const { domains: DOMAINS, questions: BANK, flashcards: CARDS, labs: LABS = [] } = window.CYSA;
 const DKEYS = Object.keys(DOMAINS);
 
 // ---------- State ----------
 const LS_KEY = "cysa-study-desk-v1";
-function blankState() { return { answers: {}, known: [], history: [], custom: [] }; }
+function blankState() { return { answers: {}, known: [], history: [], custom: [], labs: {} }; }
 let state = blankState();
 let dbRef = null, writing = false, dirty = false, saveTimer = null;
 
@@ -20,9 +20,10 @@ function normalize(s) {
   b.known = Array.isArray(s.known) ? s.known.slice() : [];
   b.history = Array.isArray(s.history) ? s.history.slice(0, 30) : [];
   b.custom = Array.isArray(s.custom) ? s.custom.filter(validQ).slice(-80) : [];
+  b.labs = s.labs && typeof s.labs === "object" && !Array.isArray(s.labs) ? { ...s.labs } : {};
   return b;
 }
-function hasProgress(s) { return Object.keys(s.answers).length || s.known.length || s.history.length || s.custom.length; }
+function hasProgress(s) { return Object.keys(s.answers).length || s.known.length || s.history.length || s.custom.length || Object.keys(s.labs).length; }
 
 function save() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
@@ -106,7 +107,7 @@ function md(text) {
 }
 
 // ---------- Tabs ----------
-const TABS = ["overview", "practice", "cards", "tutor"];
+const TABS = ["overview", "practice", "labs", "cards", "tutor"];
 function showTab(t) {
   if (!TABS.includes(t)) t = "overview";
   for (const k of TABS) $("v-" + k).hidden = k !== t;
@@ -114,6 +115,7 @@ function showTab(t) {
   if (t === "overview") renderOverview();
   if (t === "cards") renderCard();
   if (t === "practice") renderPoolNote();
+  if (t === "labs") renderLabList();
 }
 document.querySelectorAll("nav.tabs button").forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
 
@@ -365,6 +367,133 @@ Reply with only a JSON array, like:
     st.textContent = errCopy(e.code);
   } finally { btn.disabled = false; }
 };
+
+// ---------- Log labs ----------
+// A lab is graded like a PBQ: half the score for flagging the right log lines (false flags cancel hits),
+// half for the follow-up questions. 80% is the pass mark used across the app.
+let lab = null;
+function labStatus(id) {
+  const r = state.labs[id];
+  if (!r) return '<span class="pill none">Not attempted</span>';
+  return `<span class="pill ${r.best >= 80 ? "ok" : r.best >= 60 ? "mid" : "bad"}">Best ${r.best}%</span>`;
+}
+function renderLabList() {
+  $("lab-cards").innerHTML = LABS.map(l => `<button class="lab-card" data-id="${esc(l.id)}">
+      <span class="tag">${DOMAINS[l.d].code} ${esc(DOMAINS[l.d].name)}</span>
+      <h3>${esc(l.title)}</h3>
+      <span class="src">${esc(l.source)}</span>
+      <span class="meta"><span class="mono" style="color:var(--muted);font-size:12.5px">${l.rows.length} lines · ${l.tasks.length + 1} tasks</span>${labStatus(l.id)}</span>
+    </button>`).join("");
+  $("lab-cards").querySelectorAll(".lab-card").forEach(b => b.onclick = () => openLab(b.dataset.id));
+}
+function openLab(id) {
+  const L = LABS.find(l => l.id === id);
+  if (!L) return;
+  lab = { L, flags: new Set(), picks: L.tasks.map(() => null), orders: L.tasks.map(() => shuffle([0, 1, 2, 3])), graded: false };
+  $("lab-list").hidden = true; $("lab-run").hidden = false; $("lab-result").hidden = true;
+  $("lab-tag").textContent = DOMAINS[L.d].code + " " + DOMAINS[L.d].name + " · " + L.source;
+  $("lab-title").textContent = L.title;
+  $("lab-brief").textContent = L.brief;
+  $("lab-submit").hidden = false;
+  renderLabLog(); renderLabTasks(); updateLabHint();
+  window.scrollTo(0, 0);
+}
+function closeLab() {
+  lab = null;
+  $("lab-run").hidden = true; $("lab-list").hidden = false;
+  renderLabList();
+}
+function toggleFlag(tr) {
+  const i = Number(tr.dataset.i);
+  if (lab.flags.has(i)) lab.flags.delete(i); else lab.flags.add(i);
+  tr.classList.toggle("flag", lab.flags.has(i));
+  tr.setAttribute("aria-checked", String(lab.flags.has(i)));
+  updateLabHint();
+}
+function renderLabLog() {
+  const L = lab.L, g = lab.graded, span = L.cols.length + (g ? 1 : 0);
+  const head = "<thead><tr>" + L.cols.map(c => `<th>${esc(c)}</th>`).join("") + (g ? "<th>Result</th>" : "") + "</tr></thead>";
+  const body = L.rows.map((r, i) => {
+    const f = lab.flags.has(i);
+    let cls = "line" + (f ? " flag" : ""), mark = "", note = "";
+    if (g) {
+      cls = "line" + (r.bad && f ? " hit" : r.bad ? " miss" : f ? " false" : "");
+      mark = r.bad && f ? '<span class="mk ok">Caught</span>' : r.bad ? '<span class="mk warn">Missed</span>' : f ? '<span class="mk bad">Not malicious</span>' : "";
+      if (r.note && (r.bad || f)) note = `<tr class="note"><td colspan="${span}">${esc(r.note)}</td></tr>`;
+    }
+    const attrs = g ? "" : ` tabindex="0" role="checkbox" aria-checked="${f}"`;
+    return `<tr class="${cls}" data-i="${i}"${attrs}>${r.f.map(v => `<td>${esc(v)}</td>`).join("")}${g ? `<td>${mark}</td>` : ""}</tr>${note}`;
+  }).join("");
+  $("lab-log").innerHTML = head + "<tbody>" + body + "</tbody>";
+  $("lab-log").classList.toggle("graded", g);
+  if (!g) $("lab-log").querySelectorAll("tr.line").forEach(tr => {
+    tr.onclick = () => toggleFlag(tr);
+    tr.onkeydown = e => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggleFlag(tr); } };
+  });
+}
+function renderLabTasks(focus) {
+  const L = lab.L, g = lab.graded;
+  $("lab-tasks").innerHTML = L.tasks.map((t, ti) => {
+    const ok = lab.picks[ti] === t.a;
+    const opts = lab.orders[ti].map((oi, k) => {
+      let cls = "opt";
+      if (g) { if (oi === t.a) cls += " right"; else if (oi === lab.picks[ti]) cls += " wrong"; }
+      else if (oi === lab.picks[ti]) cls += " sel";
+      return `<button class="${cls}" data-t="${ti}" data-oi="${oi}" aria-pressed="${oi === lab.picks[ti]}"${g ? " disabled" : ""}><span class="k">${"ABCD"[k]}</span><span>${esc(t.o[oi])}</span></button>`;
+    }).join("");
+    const exp = g ? `<div class="explain"><div class="verdict ${ok ? "ok" : "bad"}">${ok ? "Correct." : "Not quite."}</div><div>${esc(t.x)}</div></div>` : "";
+    return `<div class="lab-q"><div class="step"><span class="mono">${ti + 2}</span> ${esc(t.q)}</div><div class="opts">${opts}</div>${exp}</div>`;
+  }).join("");
+  if (g) return;
+  $("lab-tasks").querySelectorAll(".opt").forEach(b => b.onclick = () => {
+    lab.picks[Number(b.dataset.t)] = Number(b.dataset.oi);
+    renderLabTasks(`.opt[data-t="${b.dataset.t}"][data-oi="${b.dataset.oi}"]`);
+    updateLabHint();
+  });
+  if (focus) $("lab-tasks").querySelector(focus)?.focus();
+}
+function updateLabHint() {
+  if (lab.graded) return;
+  $("lab-flagcount").textContent = "· " + lab.flags.size + " flagged";
+  const todo = [];
+  if (!lab.flags.size) todo.push("flag at least one line");
+  lab.picks.forEach((p, i) => { if (p === null) todo.push("answer question " + (i + 2)); });
+  $("lab-hint").textContent = todo.length ? "To submit: " + todo.join(", ") + "." : "Ready to submit.";
+  $("lab-submit").disabled = todo.length > 0;
+}
+function gradeLab() {
+  const L = lab.L;
+  const bad = L.rows.map((r, i) => (r.bad ? i : -1)).filter(i => i >= 0);
+  const hits = bad.filter(i => lab.flags.has(i)).length;
+  const falses = [...lab.flags].filter(i => !L.rows[i].bad).length;
+  const linePts = Math.round(50 * Math.max(0, hits - falses) / bad.length);
+  const right = L.tasks.filter((t, i) => lab.picks[i] === t.a).length;
+  const taskPts = Math.round(50 * right / L.tasks.length);
+  const score = linePts + taskPts;
+  lab.graded = true;
+  renderLabLog(); renderLabTasks();
+  $("lab-flagcount").textContent = ""; $("lab-hint").textContent = ""; $("lab-submit").hidden = true;
+
+  const rec = state.labs[L.id] || { best: 0, tries: 0 };
+  state.labs[L.id] = { best: Math.max(rec.best, score), tries: rec.tries + 1, last: score };
+  state.history.unshift({ t: Date.now(), label: "Lab: " + L.title, c: score, n: 100 });
+  state.history = state.history.slice(0, 30);
+  save();
+
+  $("lab-score").textContent = score + "%";
+  $("lab-verdict").textContent = score >= 80 ? "Pass. Solid analysis." : "Below the 80% target. Read the notes on each line, then try again.";
+  const row = (label, pts) => `<div class="dom" style="grid-template-columns:minmax(0,1fr) auto"><span>${label}</span><span class="pct">${pts} / 50</span></div>`;
+  $("lab-breakdown").innerHTML =
+    row(`Log lines: caught ${hits} of ${bad.length}${falses ? `, flagged ${falses} benign line${falses > 1 ? "s" : ""} (each cancels a catch)` : ""}`, linePts) +
+    row(`Questions: ${right} of ${L.tasks.length} correct`, taskPts);
+  $("lab-debrief").textContent = L.debrief;
+  $("lab-result").hidden = false;
+  $("lab-result").scrollIntoView({ block: "start" });
+}
+$("lab-submit").onclick = gradeLab;
+$("lab-back").onclick = closeLab;
+$("lab-back2").onclick = closeLab;
+$("lab-retry").onclick = () => openLab(lab.L.id);
 
 // ---------- Flashcards ----------
 $("c-domain").innerHTML = '<option value="any">All domains</option>' + DKEYS.map(d => `<option value="${d}">${DOMAINS[d].code} ${esc(DOMAINS[d].name)}</option>`).join("");

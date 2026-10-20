@@ -170,3 +170,37 @@ textarea { font: inherit; color: var(--ink); background: var(--surface); border:
 @media (prefers-reduced-motion: reduce) {
   .card3d .inner, .progress span { transition: none; }
 }
+
+/* Log labs */
+.lab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.lab-card { text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.lab-card:hover { border-color: var(--accent); }
+.lab-card h3 { font-size: 17px; }
+.lab-card .src { font-size: 13px; color: var(--muted); }
+.lab-card .meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 6px; }
+.step { font-weight: 600; margin-bottom: 8px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.step > .mono:first-child { color: var(--accent); }
+.logwrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+table.log { border-collapse: collapse; font-family: var(--f-mono); font-size: 12.5px; width: 100%; font-variant-numeric: tabular-nums; }
+table.log th { position: sticky; top: 0; text-align: left; font-weight: 500; color: var(--muted); background: var(--surface); padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.log td { padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.log tr.line { cursor: pointer; }
+table.log tr.line:hover td { background: var(--track); }
+table.log tr.line td:first-child { box-shadow: inset 3px 0 0 transparent; }
+table.log tr.line.flag td { background: var(--accent-soft); }
+table.log tr.line.flag td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+table.log tr.line:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+table.log.graded tr.line { cursor: default; }
+table.log tr.hit td { background: var(--ok-soft); }
+table.log tr.hit td:first-child { box-shadow: inset 3px 0 0 var(--ok); }
+table.log tr.miss td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
+table.log tr.false td { background: var(--bad-soft); }
+table.log tr.false td:first-child { box-shadow: inset 3px 0 0 var(--bad); }
+table.log tr.note td { white-space: normal; font-family: var(--f-body); font-size: 13px; color: var(--muted); padding-top: 0; }
+table.log tr.note b { font-weight: 600; }
+.mk { font-weight: 600; }
+.mk.ok { color: var(--ok); } .mk.bad { color: var(--bad); } .mk.warn { color: var(--warn); }
+.opt.sel { border-color: var(--accent); background: var(--accent-soft); }
+.opt.sel .k { background: var(--accent); color: var(--accent-ink); }
+.lab-q { margin-top: 4px; }
+.lab-q + .lab-q { margin-top: 18px; }

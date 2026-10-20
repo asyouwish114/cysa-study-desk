@@ -17,6 +17,7 @@
     <nav class="tabs" role="tablist">
       <button role="tab" data-tab="overview" aria-selected="true">Overview</button>
       <button role="tab" data-tab="practice" aria-selected="false">Practice</button>
+      <button role="tab" data-tab="labs" aria-selected="false">Log Labs</button>
       <button role="tab" data-tab="cards" aria-selected="false">Flashcards</button>
       <button role="tab" data-tab="tutor" aria-selected="false">Tutor</button>
     </nav>
@@ -123,6 +124,52 @@
     </div>
   </section>
 
+  <!-- LOG LABS -->
+  <section class="view" id="v-labs" hidden>
+    <div id="lab-list">
+      <div class="panel" style="margin-bottom:20px">
+        <h3>Log analysis labs</h3>
+        <p style="margin:4px 0 0;color:var(--muted);max-width:68ch">Performance-based practice like the real exam. Read the scenario, flag every log line that is part of the attack, identify what happened, and choose the response. You're graded on all three.</p>
+      </div>
+      <div class="lab-grid" id="lab-cards"></div>
+    </div>
+
+    <div id="lab-run" hidden>
+      <div class="panel" style="display:grid;gap:16px">
+        <div class="row" style="justify-content:space-between">
+          <span class="tag" id="lab-tag"></span>
+          <button class="btn small" id="lab-back">All labs</button>
+        </div>
+        <div>
+          <h2 id="lab-title" style="font-size:24px"></h2>
+          <p id="lab-brief" style="margin:6px 0 0;max-width:70ch"></p>
+        </div>
+        <div>
+          <div class="step"><span class="mono">1</span> Click every line that is part of the attack <span class="mono" id="lab-flagcount" style="color:var(--muted)"></span></div>
+          <div class="logwrap"><table class="log" id="lab-log"></table></div>
+        </div>
+        <div id="lab-tasks"></div>
+        <div class="row" style="justify-content:flex-end">
+          <span class="gen-note grow" id="lab-hint"></span>
+          <button class="btn primary" id="lab-submit">Submit for grading</button>
+        </div>
+      </div>
+
+      <div class="panel" id="lab-result" hidden style="margin-top:20px">
+        <div class="label">Lab result</div>
+        <div class="row" style="align-items:baseline;margin:6px 0 14px">
+          <span class="score" id="lab-score"></span><span id="lab-verdict" style="color:var(--muted)"></span>
+        </div>
+        <div id="lab-breakdown" style="display:grid;gap:12px"></div>
+        <div class="explain" style="margin-top:16px"><div class="verdict">Debrief</div><div id="lab-debrief"></div></div>
+        <div class="row" style="margin-top:16px">
+          <button class="btn primary" id="lab-retry">Try again</button>
+          <button class="btn" id="lab-back2">All labs</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- FLASHCARDS -->
   <section class="view" id="v-cards" hidden>
     <div class="deckbar">
@@ -171,6 +218,7 @@
 <script src="data/domains.js"></script>
 <script src="data/questions.js"></script>
 <script src="data/flashcards.js"></script>
+<script src="data/labs.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
