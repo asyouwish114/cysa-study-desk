@@ -245,7 +245,7 @@ input[type="text"]:focus-visible { outline: 2px solid var(--accent); outline-off
 .cv-ticks span { position: absolute; transform: translateX(-50%); }
 .cv-ticks span:nth-child(1) { left: 0; transform: none; } .cv-ticks span:nth-child(2) { left: 40%; }
 .cv-ticks span:nth-child(3) { left: 70%; } .cv-ticks span:nth-child(4) { left: 90%; }
-.cv-ticks span:nth-child(5) { right: 0; left: auto; transform: none; }
+
 .cv-vec { display: block; font-family: var(--f-mono); font-size: 12.5px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin-top: 6px; overflow-wrap: anywhere; }
 .cv-mean { display: grid; gap: 10px; }
 .cv-m { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; font-size: 14px; max-width: 80ch; }
@@ -261,3 +261,4 @@ table.cv-why td:last-child { min-width: 240px; }
   .cv-row { grid-template-columns: 1fr; gap: 6px; }
 }
 @media (prefers-reduced-motion: reduce) { .cv-marker { transition: none; } }
+#cv-paste { flex: 1 1 0; width: 0; }
