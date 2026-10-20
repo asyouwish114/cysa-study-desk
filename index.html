@@ -18,6 +18,7 @@
       <button role="tab" data-tab="overview" aria-selected="true">Overview</button>
       <button role="tab" data-tab="practice" aria-selected="false">Practice</button>
       <button role="tab" data-tab="labs" aria-selected="false">Log Labs</button>
+      <button role="tab" data-tab="cvss" aria-selected="false">CVSS</button>
       <button role="tab" data-tab="cards" aria-selected="false">Flashcards</button>
       <button role="tab" data-tab="tutor" aria-selected="false">Tutor</button>
     </nav>
@@ -170,6 +171,77 @@
     </div>
   </section>
 
+  <!-- CVSS -->
+  <section class="view" id="v-cvss" hidden>
+    <div class="row" style="justify-content:space-between">
+      <div class="seg" id="cv-modes">
+        <button type="button" data-mode="calc" aria-pressed="true">Calculator</button>
+        <button type="button" data-mode="chal" aria-pressed="false">Scoring challenges</button>
+      </div>
+      <span class="label">CVSS v3.1 base score</span>
+    </div>
+
+    <div id="cv-calc" style="display:grid;gap:20px">
+      <div class="cv-layout">
+        <div class="panel" id="cv-picker"></div>
+        <div class="panel cv-score">
+          <div class="label">Base score</div>
+          <div class="row" style="align-items:baseline;gap:14px;margin:6px 0 12px">
+            <span class="cv-num" id="cv-num">9.8</span><span class="pill" id="cv-sev">Critical</span>
+          </div>
+          <div class="cv-scale" aria-hidden="true"><span class="s-low"></span><span class="s-med"></span><span class="s-high"></span><span class="s-crit"></span><i class="cv-marker" id="cv-marker"></i></div>
+          <div class="cv-ticks mono" aria-hidden="true"><span>0</span><span>4.0</span><span>7.0</span><span>9.0</span><span>10</span></div>
+          <div class="gen-note mono" id="cv-sub" style="margin-top:10px"></div>
+          <div class="label" style="margin-top:16px">Vector string</div>
+          <code class="cv-vec" id="cv-vector"></code>
+          <div class="row" style="margin-top:8px"><button class="btn small" type="button" id="cv-copy">Copy vector</button></div>
+          <form id="cv-form" style="margin-top:16px;display:grid;gap:6px">
+            <label class="label" for="cv-paste">Score a vector</label>
+            <div class="row" style="flex-wrap:nowrap">
+              <input type="text" id="cv-paste" class="grow" placeholder="CVSS:3.1/AV:N/AC:L/..." autocomplete="off" spellcheck="false">
+              <button class="btn small" type="submit">Load</button>
+            </div>
+            <span class="gen-note" id="cv-err" role="alert"></span>
+          </form>
+        </div>
+      </div>
+      <div class="panel">
+        <h3 style="margin-bottom:10px">What your choices mean</h3>
+        <div class="cv-mean" id="cv-mean"></div>
+      </div>
+    </div>
+
+    <div id="cv-chal" hidden style="display:grid;gap:20px">
+      <div class="panel" style="display:grid;gap:14px">
+        <div class="row" style="justify-content:space-between">
+          <select id="ch-select" aria-label="Choose a scenario"></select>
+          <span id="ch-status"></span>
+        </div>
+        <div>
+          <h2 id="ch-title" style="font-size:22px"></h2>
+          <p id="ch-text" style="margin:6px 0 0;max-width:70ch"></p>
+        </div>
+        <div id="ch-picker"></div>
+        <div class="row" style="justify-content:flex-end">
+          <span class="gen-note grow" id="ch-hint"></span>
+          <button class="btn primary" id="ch-submit">Check my vector</button>
+        </div>
+      </div>
+      <div class="panel" id="ch-result" hidden>
+        <div class="label">Result</div>
+        <div class="row" style="align-items:baseline;margin:6px 0 14px">
+          <span class="score" id="ch-score"></span><span id="ch-verdict" style="color:var(--muted)"></span>
+        </div>
+        <div class="cv-vecs" id="ch-vectors"></div>
+        <div style="overflow-x:auto;margin-top:14px"><table class="hist cv-why" id="ch-why"></table></div>
+        <div class="row" style="margin-top:16px">
+          <button class="btn primary" id="ch-next">Next scenario</button>
+          <button class="btn" id="ch-retry">Try again</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- FLASHCARDS -->
   <section class="view" id="v-cards" hidden>
     <div class="deckbar">
@@ -219,6 +291,8 @@
 <script src="data/questions.js"></script>
 <script src="data/flashcards.js"></script>
 <script src="data/labs.js"></script>
+<script src="data/cvss.js"></script>
+<script src="js/cvss.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

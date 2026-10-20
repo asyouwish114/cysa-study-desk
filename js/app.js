@@ -9,7 +9,7 @@ const DKEYS = Object.keys(DOMAINS);
 
 // ---------- State ----------
 const LS_KEY = "cysa-study-desk-v1";
-function blankState() { return { answers: {}, known: [], history: [], custom: [], labs: {} }; }
+function blankState() { return { answers: {}, known: [], history: [], custom: [], labs: {}, cvss: {} }; }
 let state = blankState();
 let dbRef = null, writing = false, dirty = false, saveTimer = null;
 
@@ -21,9 +21,10 @@ function normalize(s) {
   b.history = Array.isArray(s.history) ? s.history.slice(0, 30) : [];
   b.custom = Array.isArray(s.custom) ? s.custom.filter(validQ).slice(-80) : [];
   b.labs = s.labs && typeof s.labs === "object" && !Array.isArray(s.labs) ? { ...s.labs } : {};
+  b.cvss = s.cvss && typeof s.cvss === "object" && !Array.isArray(s.cvss) ? { ...s.cvss } : {};
   return b;
 }
-function hasProgress(s) { return Object.keys(s.answers).length || s.known.length || s.history.length || s.custom.length || Object.keys(s.labs).length; }
+function hasProgress(s) { return Object.keys(s.answers).length || s.known.length || s.history.length || s.custom.length || Object.keys(s.labs).length || Object.keys(s.cvss).length; }
 
 function save() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
@@ -107,7 +108,7 @@ function md(text) {
 }
 
 // ---------- Tabs ----------
-const TABS = ["overview", "practice", "labs", "cards", "tutor"];
+const TABS = ["overview", "practice", "labs", "cvss", "cards", "tutor"];
 function showTab(t) {
   if (!TABS.includes(t)) t = "overview";
   for (const k of TABS) $("v-" + k).hidden = k !== t;
@@ -116,6 +117,7 @@ function showTab(t) {
   if (t === "cards") renderCard();
   if (t === "practice") renderPoolNote();
   if (t === "labs") renderLabList();
+  if (t === "cvss") setCvMode(cvMode);
 }
 document.querySelectorAll("nav.tabs button").forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
 
@@ -494,6 +496,122 @@ $("lab-submit").onclick = gradeLab;
 $("lab-back").onclick = closeLab;
 $("lab-back2").onclick = closeLab;
 $("lab-retry").onclick = () => openLab(lab.L.id);
+
+// ---------- CVSS ----------
+// Calculator plus scoring challenges. The math lives in js/cvss.js (unit-tested); this section is UI only.
+const CV = window.CYSA.cvss, CV_SC = window.CYSA.cvssScenarios || [];
+const SEV = { None: "none", Low: "low", Medium: "med", High: "high", Critical: "crit" };
+const metricLabel = (k, v) => CV.METRICS.find(m => m.key === k).values.find(x => x.v === v).label;
+let cvMode = "calc";
+let cvSel = CV.parse("CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H");
+let ch = { i: 0, sel: {}, graded: false };
+
+// Renders the eight metric rows as button groups. With `answer`, shows grading instead of accepting input.
+function renderPicker(el, sel, onPick, answer) {
+  el.innerHTML = CV.METRICS.map(m => `<div class="cv-row"><div class="cv-name">${esc(m.name)}<span class="mono">${m.key}</span></div><div class="cv-seg" role="group" aria-label="${esc(m.name)}">${
+    m.values.map(x => {
+      let cls = "cv-opt";
+      if (answer) { if (x.v === answer[m.key]) cls += " right"; else if (x.v === sel[m.key]) cls += " wrong"; }
+      else if (x.v === sel[m.key]) cls += " on";
+      return `<button type="button" class="${cls}" data-k="${m.key}" data-v="${x.v}" aria-pressed="${x.v === sel[m.key]}" title="${esc(x.mean)}"${answer ? " disabled" : ""}>${esc(x.label)}</button>`;
+    }).join("")}</div></div>`).join("");
+  if (!answer) el.querySelectorAll(".cv-opt").forEach(b => b.onclick = () => {
+    onPick(b.dataset.k, b.dataset.v);
+    el.querySelector(`[data-k="${b.dataset.k}"][data-v="${b.dataset.v}"]`)?.focus();
+  });
+}
+
+function setCvMode(mode) {
+  cvMode = mode;
+  $("cv-calc").hidden = mode !== "calc";
+  $("cv-chal").hidden = mode !== "chal";
+  document.querySelectorAll("#cv-modes button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
+  if (mode === "chal") renderChallenge(); else renderCalc();
+}
+document.querySelectorAll("#cv-modes button").forEach(b => b.onclick = () => setCvMode(b.dataset.mode));
+
+function renderCalc() {
+  renderPicker($("cv-picker"), cvSel, (k, v) => { cvSel = { ...cvSel, [k]: v }; renderCalc(); });
+  const r = CV.score(cvSel);
+  $("cv-num").textContent = r.score.toFixed(1);
+  $("cv-num").className = "cv-num sevtext-" + SEV[r.severity];
+  $("cv-sev").textContent = r.severity;
+  $("cv-sev").className = "pill sev-" + SEV[r.severity];
+  $("cv-marker").style.left = r.score * 10 + "%";
+  $("cv-sub").textContent = `Impact ${r.impact.toFixed(1)} · Exploitability ${r.exploitability.toFixed(1)}`;
+  $("cv-vector").textContent = CV.toVector(cvSel);
+  $("cv-mean").innerHTML = CV.METRICS.map(m => {
+    const x = m.values.find(v => v.v === cvSel[m.key]);
+    return `<div class="cv-m"><span class="mono">${m.key}:${x.v}</span><div><b>${esc(m.name)}: ${esc(x.label)}.</b> ${esc(x.mean)}</div></div>`;
+  }).join("");
+}
+$("cv-copy").onclick = () => {
+  const btn = $("cv-copy"), text = $("cv-vector").textContent;
+  const selectIt = () => { const r = document.createRange(); r.selectNodeContents($("cv-vector")); getSelection().removeAllRanges(); getSelection().addRange(r); };
+  const done = msg => { btn.textContent = msg; setTimeout(() => { btn.textContent = "Copy vector"; }, 1500); };
+  try { navigator.clipboard.writeText(text).then(() => done("Copied"), () => { selectIt(); done("Press Ctrl+C"); }); }
+  catch (e) { selectIt(); done("Press Ctrl+C"); }
+};
+$("cv-form").addEventListener("submit", e => {
+  e.preventDefault();
+  const sel = CV.parse($("cv-paste").value);
+  if (!sel) { $("cv-err").textContent = "That isn't a complete CVSS 3.1 base vector. It needs all eight metrics, for example CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H."; return; }
+  $("cv-err").textContent = "";
+  cvSel = sel;
+  renderCalc();
+});
+
+$("ch-select").innerHTML = CV_SC.map((s, i) => `<option value="${i}">${i + 1}. ${esc(s.title)}</option>`).join("");
+$("ch-select").addEventListener("change", () => openChallenge(Number($("ch-select").value)));
+function openChallenge(i) {
+  ch = { i, sel: {}, graded: false };
+  $("ch-select").value = String(i);
+  renderChallenge();
+}
+function renderChallenge() {
+  const s = CV_SC[ch.i];
+  if (!s) return;
+  const rec = state.cvss[s.id];
+  $("ch-status").innerHTML = rec
+    ? `<span class="pill ${rec.best === 8 ? "ok" : rec.best >= 6 ? "mid" : "bad"}">Best ${rec.best}/8</span>`
+    : '<span class="pill none">Not attempted</span>';
+  $("ch-title").textContent = s.title;
+  $("ch-text").textContent = s.scenario;
+  renderPicker($("ch-picker"), ch.sel, (k, v) => { ch.sel = { ...ch.sel, [k]: v }; renderChallenge(); }, ch.graded ? CV.parse(s.vector) : null);
+  const left = CV.KEYS.filter(k => !ch.sel[k]).length;
+  $("ch-hint").textContent = ch.graded ? "" : left ? `Pick ${left} more metric${left > 1 ? "s" : ""} to check your vector.` : "Ready to check.";
+  $("ch-submit").disabled = left > 0;
+  $("ch-submit").hidden = ch.graded;
+  $("ch-result").hidden = !ch.graded;
+}
+function gradeChallenge() {
+  const s = CV_SC[ch.i], ans = CV.parse(s.vector);
+  const right = CV.KEYS.filter(k => ch.sel[k] === ans[k]).length;
+  const mine = CV.score(ch.sel), real = CV.score(ans);
+  ch.graded = true;
+  const rec = state.cvss[s.id] || { best: 0, tries: 0 };
+  state.cvss[s.id] = { best: Math.max(rec.best, right), tries: rec.tries + 1 };
+  state.history.unshift({ t: Date.now(), label: "CVSS: " + s.title, c: right, n: 8 });
+  state.history = state.history.slice(0, 30);
+  save();
+
+  $("ch-score").textContent = right + " / 8";
+  $("ch-verdict").textContent = right === 8
+    ? `Perfect vector. It scores ${real.score.toFixed(1)} (${real.severity}).`
+    : `Your vector scores ${mine.score.toFixed(1)} (${mine.severity}). The correct one scores ${real.score.toFixed(1)} (${real.severity}).`;
+  $("ch-vectors").innerHTML =
+    `<div><span class="label">Your vector</span><code class="cv-vec">${esc(CV.toVector(ch.sel))}</code></div>` +
+    `<div><span class="label">Correct vector</span><code class="cv-vec">${esc(s.vector)}</code></div>`;
+  $("ch-why").innerHTML = "<thead><tr><th>Metric</th><th>You</th><th>Answer</th><th>Why</th></tr></thead><tbody>" + CV.METRICS.map(m => {
+    const ok = ch.sel[m.key] === ans[m.key];
+    return `<tr><td>${esc(m.name)}</td><td><span class="mk ${ok ? "ok" : "bad"}">${esc(metricLabel(m.key, ch.sel[m.key]))}</span></td><td>${esc(metricLabel(m.key, ans[m.key]))}</td><td>${esc(s.why[m.key])}</td></tr>`;
+  }).join("") + "</tbody>";
+  renderChallenge();
+  $("ch-result").scrollIntoView({ block: "start" });
+}
+$("ch-submit").onclick = gradeChallenge;
+$("ch-retry").onclick = () => openChallenge(ch.i);
+$("ch-next").onclick = () => openChallenge((ch.i + 1) % CV_SC.length);
 
 // ---------- Flashcards ----------
 $("c-domain").innerHTML = '<option value="any">All domains</option>' + DKEYS.map(d => `<option value="${d}">${DOMAINS[d].code} ${esc(DOMAINS[d].name)}</option>`).join("");
