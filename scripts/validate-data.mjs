@@ -7,7 +7,7 @@ import { dirname, join } from "node:path";
 import vm from "node:vm";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const files = ["data/domains.js", "data/questions.js", "data/flashcards.js", "data/labs.js"];
+const files = ["data/domains.js", "data/questions.js", "data/flashcards.js", "data/labs.js", "data/cvss.js", "js/cvss.js"];
 
 // The data files assign to window.CYSA, so run them in a sandbox with a fake window.
 const sandbox = { window: {} };
@@ -17,7 +17,7 @@ for (const f of files) {
   try { vm.runInContext(readFileSync(join(root, f), "utf8"), sandbox, { filename: f }); }
   catch (e) { errors.push(`${f}: does not load (${e.message})`); }
 }
-const { domains = {}, questions = [], flashcards = [], labs = [] } = sandbox.window.CYSA || {};
+const { domains = {}, questions = [], flashcards = [], labs = [], cvssScenarios = [], cvss } = sandbox.window.CYSA || {};
 const isText = v => typeof v === "string" && v.trim().length > 0;
 
 // Domains
@@ -93,10 +93,23 @@ labs.forEach((l, i) => {
   else l.tasks.forEach((t, j) => checkTask(t, `${at} tasks[${j}]`));
 });
 
+// CVSS scenarios: the vector must be a complete, valid CVSS 3.1 base vector, with a reason for every metric.
+const sIds = new Set();
+cvssScenarios.forEach((s, i) => {
+  const at = `cvssScenarios[${i}]${s && s.id ? ` (${s.id})` : ""}`;
+  if (!isText(s.id)) errors.push(`${at}: missing id`);
+  else if (sIds.has(s.id)) errors.push(`${at}: duplicate id`);
+  else sIds.add(s.id);
+  if (!isText(s.title) || !isText(s.scenario)) errors.push(`${at}: needs title and scenario`);
+  if (!cvss) return;
+  if (!cvss.parse(s.vector)) errors.push(`${at}: vector "${s.vector}" is not a complete CVSS 3.1 base vector`);
+  for (const k of cvss.KEYS) if (!s.why || !isText(s.why[k])) errors.push(`${at}: missing why.${k}`);
+});
+
 if (errors.length) {
   console.error(`Data validation failed with ${errors.length} problem(s):`);
   for (const e of errors) console.error("  - " + e);
   process.exit(1);
 }
 const perDomain = keys.map(k => `${domains[k].code} ${questions.filter(q => q.d === k).length}`).join(", ");
-console.log(`OK: ${questions.length} questions (${perDomain}), ${flashcards.length} flashcards, ${labs.length} labs, ${keys.length} domains.`);
+console.log(`OK: ${questions.length} questions (${perDomain}), ${flashcards.length} flashcards, ${labs.length} labs, ${cvssScenarios.length} CVSS scenarios, ${keys.length} domains.`);
