@@ -10,8 +10,9 @@ A study app for the **CompTIA CySA+ (CS0-003)** exam, built with [Claude Code](h
 
 ## Features
 - **Readiness overview.** Accuracy in each of the four exam domains, weighted by how much of the exam
-  each one covers (33 / 30 / 20 / 17%), with your weakest domain flagged. CVSS challenges count toward
-  Vulnerability Management, one answer per scenario, scored by your latest try.
+  each one covers (33 / 30 / 20 / 17%), with your weakest domain flagged. Log labs count toward their
+  own domain and CVSS challenges toward Vulnerability Management, each as one answer scored by your
+  latest try.
 - **Practice sets.** 40 scenario-based questions with explanations. Filter by domain, retry the ones you
   missed, or practice only the ones you haven't seen. Draws from all domains follow the exam weighting.
   Answer with the A-D or 1-4 keys.

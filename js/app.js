@@ -76,15 +76,19 @@ function validQ(q) {
   return q && typeof q.q === "string" && Array.isArray(q.o) && q.o.length === 4 && q.o.every(x => typeof x === "string")
     && Number.isInteger(q.a) && q.a >= 0 && q.a < 4 && DOMAINS[q.d] && typeof q.x === "string";
 }
-// Each attempted CVSS scenario counts toward Vulnerability Management as one answer, scored by the
-// share of metrics right on the latest try (older saves only have `best`).
+// Each attempted lab (in its own domain) and CVSS scenario (in Vulnerability Management) counts as one
+// answer, scored by the latest try (older saves only have `best`).
 const CVSS_DOMAIN = "vm";
 function domainStats(d) {
-  let c = 0, t = 0, n = 0, cv = 0;
+  let c = 0, t = 0, n = 0, lb = 0, cv = 0;
   for (const q of allQuestions()) {
     if (q.d !== d) continue;
     const r = state.answers[q.id];
     if (r) { c += r.c; t += r.c + r.w; n += r.c + r.w; }
+  }
+  for (const L of LABS) {
+    const r = L.d === d && state.labs[L.id];
+    if (r) { c += (r.last ?? r.best) / 100; t += 1; lb += 1; }
   }
   if (d === CVSS_DOMAIN) {
     for (const s of window.CYSA.cvssScenarios || []) {
@@ -92,9 +96,11 @@ function domainStats(d) {
       if (r) { c += (r.last ?? r.best) / 8; t += 1; cv += 1; }
     }
   }
-  return { c, t, n, cv, pct: t ? Math.round((c / t) * 100) : null };
+  return { c, t, n, lb, cv, pct: t ? Math.round((c / t) * 100) : null };
 }
-function practicedText(s) { return s.n + " answered" + (s.cv ? " · " + s.cv + " CVSS" : ""); }
+function practicedText(s) {
+  return s.n + " answered" + (s.lb ? " · " + s.lb + (s.lb > 1 ? " labs" : " lab") : "") + (s.cv ? " · " + s.cv + " CVSS" : "");
+}
 function readiness() {
   let sum = 0, wsum = 0;
   for (const d of DKEYS) { const s = domainStats(d); if (s.pct !== null) { sum += s.pct * DOMAINS[d].weight; wsum += DOMAINS[d].weight; } }
