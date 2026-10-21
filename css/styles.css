@@ -166,6 +166,7 @@ textarea { font: inherit; color: var(--ink); background: var(--surface); border:
   .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dom { grid-template-columns: 40px minmax(0, 1fr) 56px; }
   .dom .barcell { grid-column: 2 / 4; }
+  .dom .pct { grid-row: 1; grid-column: 3; }
   .msg { max-width: 100%; }
   .card3d { height: 300px; }
 }
@@ -262,3 +263,31 @@ table.cv-why td:last-child { min-width: 240px; }
 }
 @media (prefers-reduced-motion: reduce) { .cv-marker { transition: none; } }
 #cv-paste { flex: 1 1 0; width: 0; }
+
+/* Mock exam */
+.x-intro { margin: 6px 0 14px; color: var(--muted); max-width: 64ch; }
+#x-setup .facts { margin-bottom: 12px; }
+#x-note { margin: 0 0 14px; }
+#x-past:not(:empty) { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.x-timer { font-size: 17px; font-weight: 500; padding: 2px 10px; border-radius: 6px; background: var(--track); }
+.x-timer.warn { background: var(--warn-soft); color: var(--warn); }
+.x-timer.low { background: var(--bad-soft); color: var(--bad); }
+.x-nav { margin-top: 18px; }
+#x-flag[aria-pressed="true"] { border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
+.x-map { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.x-map summary { cursor: pointer; font-weight: 600; }
+.x-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 6px; margin-top: 12px; }
+.x-cell { font-family: var(--f-mono); font-size: 12.5px; padding: 6px 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--muted); }
+.x-cell:hover { border-color: var(--accent); }
+.x-cell.ans { background: var(--accent-soft); border-color: var(--accent-soft); color: var(--accent); }
+.x-cell.flag { box-shadow: inset 0 -3px 0 var(--warn); }
+.x-cell.cur { border-color: var(--ink); color: var(--ink); font-weight: 600; }
+.x-foot { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.x-confirm { margin-top: 12px; }
+.x-scale-note { max-width: 70ch; margin: 10px 0 6px; }
+.x-item { padding: 14px 0; border-top: 1px solid var(--line); }
+.x-item:first-child { border-top: 0; }
+.x-item .qhead { margin-bottom: 4px; }
+.x-item p { margin: 0 0 8px; max-width: 70ch; font-weight: 500; }
+.x-ans { display: grid; gap: 2px; font-size: 14px; }
+.x-why { font-size: 14px; color: var(--muted); margin-top: 6px; max-width: 70ch; }

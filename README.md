@@ -16,6 +16,10 @@ A study app for the **CompTIA CySA+ (CS0-003)** exam, built with [Claude Code](h
 - **Practice sets.** 100 scenario-based questions, split by exam weight, with explanations. Filter by domain, retry the ones you
   missed, or practice only the ones you haven't seen. Draws from all domains follow the exam weighting.
   Answer with the A-D or 1-4 keys.
+- **Timed mock exam.** 85 questions at the exam weights with a 165-minute clock and no feedback until you
+  submit. Flag questions, jump around with the question grid, and pick up where you left off after a reload.
+  Results give an estimated 100-900 score against the 750 pass mark, a domain breakdown and a review of every
+  miss with its explanation.
 - **Log analysis labs.** Six performance-based investigations (RDP brute force, password spraying,
   C2 beaconing, SQL injection, PsExec lateral movement, Kerberoasting). Flag the malicious lines in realistic logs, identify
   the attack and choose the response, then get graded with a note on every line and an ATT&CK-referenced debrief.

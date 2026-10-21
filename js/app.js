@@ -9,7 +9,7 @@ const DKEYS = Object.keys(DOMAINS);
 
 // ---------- State ----------
 const LS_KEY = "cysa-study-desk-v1";
-function blankState() { return { answers: {}, known: [], history: [], custom: [], labs: {}, cvss: {} }; }
+function blankState() { return { answers: {}, known: [], history: [], custom: [], labs: {}, cvss: {}, exam: null, exams: [] }; }
 let state = blankState();
 let dbRef = null, writing = false, dirty = false, saveTimer = null;
 
@@ -22,9 +22,15 @@ function normalize(s) {
   b.custom = Array.isArray(s.custom) ? s.custom.filter(validQ).slice(-80) : [];
   b.labs = s.labs && typeof s.labs === "object" && !Array.isArray(s.labs) ? { ...s.labs } : {};
   b.cvss = s.cvss && typeof s.cvss === "object" && !Array.isArray(s.cvss) ? { ...s.cvss } : {};
+  const x = s.exam;
+  b.exam = x && Array.isArray(x.ids) && Array.isArray(x.order) && x.ids.length === x.order.length && x.ids.length
+    && Number.isFinite(x.start) && Number.isFinite(x.end) && x.picks && typeof x.picks === "object" && Array.isArray(x.flags)
+    ? { ids: x.ids.slice(), order: x.order.slice(), picks: { ...x.picks }, flags: x.flags.slice(), i: Number.isInteger(x.i) ? x.i : 0, start: x.start, end: x.end }
+    : null;
+  b.exams = Array.isArray(s.exams) ? s.exams.slice(0, 20) : [];
   return b;
 }
-function hasProgress(s) { return Object.keys(s.answers).length || s.known.length || s.history.length || s.custom.length || Object.keys(s.labs).length || Object.keys(s.cvss).length; }
+function hasProgress(s) { return Object.keys(s.answers).length || s.known.length || s.history.length || s.custom.length || Object.keys(s.labs).length || Object.keys(s.cvss).length || s.exam || s.exams.length; }
 
 function save() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
@@ -124,7 +130,7 @@ function md(text) {
 }
 
 // ---------- Tabs ----------
-const TABS = ["overview", "practice", "labs", "cvss", "cards", "tutor"];
+const TABS = ["overview", "practice", "exam", "labs", "cvss", "cards", "tutor"];
 function showTab(t) {
   if (!TABS.includes(t)) t = "overview";
   for (const k of TABS) $("v-" + k).hidden = k !== t;
@@ -132,6 +138,7 @@ function showTab(t) {
   if (t === "overview") renderOverview();
   if (t === "cards") renderCard();
   if (t === "practice") renderPoolNote();
+  if (t === "exam") renderExam();
   if (t === "labs") renderLabList();
   if (t === "cvss") setCvMode(cvMode);
 }
@@ -301,6 +308,222 @@ document.addEventListener("keydown", e => {
   const k = e.key.toUpperCase();
   const idx = "ABCD".indexOf(k) >= 0 ? "ABCD".indexOf(k) : "1234".indexOf(e.key);
   if (idx >= 0 && $("q-next").disabled) answer(run.order[idx]);
+});
+
+// ---------- Mock exam ----------
+// One full-length timed attempt with no feedback until submit. The attempt lives in state.exam so it
+// survives a reload, and the clock is wall time like the real exam. Picks are keyed by position.
+const EXAM_N = 85, EXAM_MIN = 165, PASS = 750;
+let exTick = null, exResult = null, exConfirm = null;
+const qById = id => allQuestions().find(q => q.id === id);
+// CompTIA doesn't publish its scaling, so this is a straight-line estimate onto 100-900.
+const scaled = (c, n) => Math.round(100 + 800 * (n ? c / n : 0));
+
+function examCounts(n) {
+  // Split n across domains by weight, giving leftovers to the largest remainders.
+  const raw = DKEYS.map(d => ({ d, v: n * DOMAINS[d].weight / 100 }));
+  const out = {}; let left = n;
+  for (const r of raw) { out[r.d] = Math.floor(r.v); left -= out[r.d]; }
+  raw.sort((a, b) => b.v % 1 - a.v % 1).slice(0, left).forEach(r => out[r.d]++);
+  return out;
+}
+function drawExam() {
+  const want = examCounts(EXAM_N), picked = [], spare = [];
+  for (const d of DKEYS) {
+    const pool = shuffle(allQuestions().filter(q => q.d === d));
+    picked.push(...pool.slice(0, want[d])); spare.push(...pool.slice(want[d]));
+  }
+  // A domain short of questions is topped up from the others.
+  picked.push(...shuffle(spare).slice(0, EXAM_N - picked.length));
+  return shuffle(picked);
+}
+function startExam() {
+  const qs = drawExam();
+  if (!qs.length) return;
+  const now = Date.now();
+  state.exam = { ids: qs.map(q => q.id), order: qs.map(() => shuffle([0, 1, 2, 3])), picks: {}, flags: [], i: 0, start: now, end: now + EXAM_MIN * 60000 };
+  exResult = null;
+  save();
+  renderExam();
+  $("x-text").scrollIntoView({ block: "center" });
+}
+const answeredCount = () => Object.keys(state.exam.picks).length;
+
+function syncExamClock() {
+  if (state.exam && !exTick) exTick = setInterval(tickExam, 1000);
+  if (!state.exam && exTick) { clearInterval(exTick); exTick = null; }
+  if (state.exam) tickExam();
+}
+function tickExam() {
+  const ex = state.exam;
+  if (!ex) return syncExamClock();
+  const s = Math.ceil(Math.max(0, ex.end - Date.now()) / 1000);
+  if (!s) return submitExam(true);
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+  $("x-timer").textContent = h + ":" + String(m).padStart(2, "0") + ":" + String(sec).padStart(2, "0");
+  $("x-timer").className = "x-timer mono" + (s <= 300 ? " low" : s <= 900 ? " warn" : "");
+}
+
+function renderExam() {
+  // Drop an attempt whose questions no longer exist (a removed generated question).
+  if (state.exam && state.exam.ids.some(id => !qById(id))) { state.exam = null; save(); }
+  syncExamClock();
+  const ex = state.exam;
+  $("x-setup").hidden = !!ex || !!exResult;
+  $("x-run").hidden = !ex;
+  $("x-done").hidden = $("x-review").hidden = !!ex || !exResult;
+  if (ex) return showExamQ();
+  if (exResult) return renderExamResult();
+  const total = allQuestions().length;
+  $("x-n").textContent = Math.min(EXAM_N, total);
+  $("x-note").textContent = total >= EXAM_N
+    ? `Each attempt draws ${EXAM_N} of your ${total} questions.`
+    : `Your bank has ${total} questions, so this exam uses all of them.`;
+  $("x-start").disabled = !total;
+  const p = state.exams;
+  $("x-past").innerHTML = p.length
+    ? `<h3 style="margin-bottom:8px">Past attempts</h3><div style="overflow-x:auto"><table class="hist"><thead><tr><th>Date</th><th>Result</th><th class="r">Correct</th><th class="r">Time</th><th class="r">Score</th></tr></thead><tbody>${
+        p.slice(0, 8).map(x => `<tr><td class="mono">${esc(new Date(x.t).toLocaleDateString(undefined, { month: "short", day: "numeric" }))}</td><td>${x.score >= PASS ? '<span class="pill ok">Pass</span>' : '<span class="pill bad">Below passing</span>'}</td><td class="r mono">${x.c}/${x.n}</td><td class="r mono">${x.mins} min</td><td class="r mono">${x.score}</td></tr>`).join("")
+      }</tbody></table></div>`
+    : "";
+}
+function showExamQ() {
+  const ex = state.exam, q = qById(ex.ids[ex.i]), pick = ex.picks[ex.i];
+  $("x-pos").textContent = "Question " + (ex.i + 1) + " of " + ex.ids.length;
+  $("x-prog").style.width = (answeredCount() / ex.ids.length * 100) + "%";
+  $("x-text").textContent = q.q;
+  $("x-opts").innerHTML = ex.order[ex.i].map((oi, k) => `<button class="opt${pick === oi ? " sel" : ""}" data-oi="${oi}" aria-pressed="${pick === oi}"><span class="k">${"ABCD"[k]}</span><span>${esc(q.o[oi])}</span></button>`).join("");
+  $("x-opts").querySelectorAll(".opt").forEach(b => b.onclick = () => pickExam(Number(b.dataset.oi)));
+  const fl = ex.flags.includes(ex.i);
+  $("x-flag").setAttribute("aria-pressed", String(fl));
+  $("x-flag").textContent = fl ? "Flagged" : "Flag for review";
+  $("x-prev").disabled = ex.i === 0;
+  $("x-next").disabled = ex.i === ex.ids.length - 1;
+  $("x-count").textContent = `· ${answeredCount()} answered · ${ex.flags.length} flagged`;
+  $("x-grid").innerHTML = ex.ids.map((_, i) => {
+    const a = ex.picks[i] !== undefined, f = ex.flags.includes(i);
+    return `<button type="button" class="x-cell${a ? " ans" : ""}${f ? " flag" : ""}${i === ex.i ? " cur" : ""}" data-i="${i}" aria-label="Question ${i + 1}${a ? ", answered" : ""}${f ? ", flagged" : ""}"${i === ex.i ? ' aria-current="true"' : ""}>${i + 1}</button>`;
+  }).join("");
+  $("x-grid").querySelectorAll(".x-cell").forEach(b => b.onclick = () => goExam(Number(b.dataset.i)));
+  tickExam();
+}
+function pickExam(oi) {
+  state.exam.picks[state.exam.i] = oi;
+  save();
+  showExamQ();
+  $("x-opts").querySelector(`[data-oi="${oi}"]`)?.focus();
+}
+function goExam(i) {
+  const ex = state.exam;
+  if (!ex || i < 0 || i >= ex.ids.length) return;
+  ex.i = i;
+  save();
+  showExamQ();
+}
+$("x-prev").onclick = () => goExam(state.exam.i - 1);
+$("x-next").onclick = () => goExam(state.exam.i + 1);
+$("x-flag").onclick = () => {
+  const ex = state.exam, k = ex.flags.indexOf(ex.i);
+  if (k >= 0) ex.flags.splice(k, 1); else ex.flags.push(ex.i);
+  save();
+  showExamQ();
+};
+$("x-start").onclick = startExam;
+
+// Inline confirmation instead of confirm(), which sandboxed frames can block.
+function askExam(mode) {
+  exConfirm = mode;
+  const ex = state.exam, open = ex.ids.length - answeredCount();
+  $("x-confirm-text").textContent = mode === "submit"
+    ? (open ? `${open} question${open > 1 ? "s are" : " is"} unanswered and will count as wrong. ` : "Every question is answered. ") + (ex.flags.length ? `${ex.flags.length} still flagged for review.` : "")
+    : "Abandon this attempt? It won't be scored or saved.";
+  $("x-yes").textContent = mode === "submit" ? "Submit now" : "Abandon";
+  $("x-confirm").hidden = false;
+  $("x-yes").focus();
+}
+$("x-submit").onclick = () => askExam("submit");
+$("x-quit").onclick = () => askExam("quit");
+$("x-no").onclick = () => { $("x-confirm").hidden = true; };
+$("x-yes").onclick = () => {
+  $("x-confirm").hidden = true;
+  if (exConfirm === "submit") return submitExam(false);
+  state.exam = null;
+  save();
+  renderExam();
+};
+
+function submitExam(timeUp) {
+  const ex = state.exam;
+  if (!ex) return;
+  state.exam = null;
+  const items = ex.ids.map((id, i) => ({ q: qById(id), order: ex.order[i], pick: ex.picks[i], flag: ex.flags.includes(i), pos: i + 1 })).filter(it => it.q);
+  let c = 0;
+  const perDom = {};
+  for (const it of items) {
+    const ok = it.pick === it.q.a;
+    const pd = perDom[it.q.d] || (perDom[it.q.d] = { c: 0, n: 0 });
+    pd.n++;
+    if (ok) { c++; pd.c++; }
+    // Answered questions feed readiness and the "missed" pool, like a practice set; blanks don't.
+    if (it.pick !== undefined) {
+      const rec = state.answers[it.q.id] || { c: 0, w: 0 };
+      if (ok) rec.c++; else rec.w++;
+      rec.last = ok ? 1 : 0;
+      state.answers[it.q.id] = rec;
+    }
+  }
+  const n = items.length, score = scaled(c, n), mins = Math.round((Math.min(Date.now(), ex.end) - ex.start) / 60000);
+  state.exams.unshift({ t: Date.now(), score, c, n, mins, perDom });
+  state.exams = state.exams.slice(0, 20);
+  state.history.unshift({ t: Date.now(), label: "Mock exam · scored " + score, c, n });
+  state.history = state.history.slice(0, 30);
+  save();
+  exResult = { score, c, n, mins, perDom, items, timeUp };
+  $("x-filter").value = "missed";
+  if (!$("v-exam").hidden) { renderExam(); scrollTo(0, 0); }
+}
+
+function renderExamResult() {
+  const r = exResult, pass = r.score >= PASS;
+  $("x-scaled").textContent = r.score;
+  $("x-verdict").innerHTML = `<span class="pill ${pass ? "ok" : "bad"}">${pass ? "Pass" : "Below passing"}</span>`;
+  $("x-detail").textContent = `${r.c} of ${r.n} correct (${Math.round(r.c / r.n * 100)}%) · ${r.mins} of ${EXAM_MIN} minutes` + (r.timeUp ? " · time ran out" : "");
+  $("x-breakdown").innerHTML = DKEYS.filter(d => r.perDom[d]).map(d => {
+    const v = r.perDom[d], pct = Math.round(v.c / v.n * 100);
+    return `<div class="dom"><span class="num">${DOMAINS[d].code}</span><div style="min-width:0"><div class="name">${esc(DOMAINS[d].name)} ${statusPill(pct)}</div><div class="sub">${v.c} of ${v.n} correct</div></div>
+      <div class="barcell"><div class="bar"><span style="width:${pct}%"></span><i class="target"></i></div></div><span class="pct">${pct}%</span></div>`;
+  }).join("");
+  $("x-practice").hidden = !r.items.some(it => it.pick !== it.q.a);
+  renderExamReview();
+}
+function renderExamReview() {
+  const f = $("x-filter").value;
+  const list = exResult.items.filter(it => f === "all" || (f === "flagged" ? it.flag : it.pick !== it.q.a));
+  const opt = (it, oi) => esc(it.q.o[oi]);
+  $("x-list").innerHTML = list.length ? list.map(it => {
+    const ok = it.pick === it.q.a;
+    const mine = it.pick === undefined ? '<b class="mk warn">Not answered</b>' : `<b class="mk ${ok ? "ok" : "bad"}">${opt(it, it.pick)}</b>`;
+    return `<div class="x-item"><div class="qhead"><span class="tag">Q${it.pos} · ${DOMAINS[it.q.d].code} ${esc(DOMAINS[it.q.d].name)}</span>${it.flag ? '<span class="pill mid">Flagged</span>' : ""}</div>
+      <p>${esc(it.q.q)}</p>
+      <div class="x-ans"><span>Your answer: ${mine}</span>${ok ? "" : `<span>Correct: <b class="mk ok">${opt(it, it.q.a)}</b></span>`}</div>
+      <div class="x-why">${esc(it.q.x)}</div></div>`;
+  }).join("") : `<div class="empty">${f === "flagged" ? "You didn't flag any questions." : "Nothing missed. Every question was right."}</div>`;
+}
+$("x-filter").addEventListener("change", renderExamReview);
+$("x-again").onclick = () => { exResult = null; renderExam(); };
+$("x-practice").onclick = () => {
+  const missed = exResult.items.filter(it => it.pick !== it.q.a).map(it => it.q);
+  showTab("practice");
+  startSet(missed);
+};
+document.addEventListener("keydown", e => {
+  if ($("v-exam").hidden || !state.exam || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (["TEXTAREA", "SELECT", "INPUT"].includes(document.activeElement?.tagName)) return;
+  const k = e.key.toUpperCase(), idx = "ABCD".indexOf(k) >= 0 ? "ABCD".indexOf(k) : "1234".indexOf(e.key);
+  if (idx >= 0) pickExam(state.exam.order[state.exam.i][idx]);
+  else if (e.key === "ArrowRight") goExam(state.exam.i + 1);
+  else if (e.key === "ArrowLeft") goExam(state.exam.i - 1);
+  else if (k === "F") $("x-flag").click();
 });
 
 // ---------- Claude (sample) ----------
@@ -730,7 +953,7 @@ $("t-input").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shif
 addMsg("assistant", md("Hi! Ask me about anything on the CySA+ objectives, from SIEM queries and CVSS scoring to IR phases and reporting. You can also ask me to quiz you, or to plan your study time around your weakest domains."));
 
 // ---------- Boot ----------
-function renderAll() { renderOverview(); renderPoolNote(); if (!$("v-cards").hidden) renderCard(); }
+function renderAll() { renderOverview(); renderPoolNote(); if (!$("v-cards").hidden) renderCard(); if (!$("v-exam").hidden) renderExam(); else syncExamClock(); }
 try { const raw = localStorage.getItem(LS_KEY); if (raw) state = normalize(JSON.parse(raw)); } catch (e) {}
 const initial = (location.hash || "").slice(1);
 showTab(TABS.includes(initial) ? initial : "overview");

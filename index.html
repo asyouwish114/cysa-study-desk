@@ -17,6 +17,7 @@
     <nav class="tabs" role="tablist">
       <button role="tab" data-tab="overview" aria-selected="true">Overview</button>
       <button role="tab" data-tab="practice" aria-selected="false">Practice</button>
+      <button role="tab" data-tab="exam" aria-selected="false">Mock Exam</button>
       <button role="tab" data-tab="labs" aria-selected="false">Log Labs</button>
       <button role="tab" data-tab="cvss" aria-selected="false">CVSS</button>
       <button role="tab" data-tab="cards" aria-selected="false">Flashcards</button>
@@ -122,6 +123,79 @@
         <button class="btn primary" id="d-again">New set</button>
         <button class="btn" id="d-missed">Retry the ones I missed</button>
       </div>
+    </div>
+  </section>
+
+  <!-- MOCK EXAM -->
+  <section class="view" id="v-exam" hidden>
+    <div class="panel" id="x-setup">
+      <h3>Timed mock exam</h3>
+      <p class="x-intro">A full-length run at the exam's domain weights. Like the real exam, you get no feedback until you submit, and you can flag questions and come back to them. The clock keeps running if you leave the tab or reload.</p>
+      <div class="facts">
+        <div><span class="label">Questions</span><b id="x-n">85</b></div>
+        <div><span class="label">Time</span><b>165 min</b></div>
+        <div><span class="label">Passing</span><b>750 / 900</b></div>
+        <div><span class="label">Feedback</span><b>At the end</b></div>
+      </div>
+      <p class="gen-note" id="x-note"></p>
+      <div class="row"><button class="btn primary" id="x-start">Start exam</button></div>
+      <div id="x-past"></div>
+    </div>
+
+    <div class="panel" id="x-run" hidden>
+      <div class="qhead">
+        <span class="tag" id="x-pos"></span>
+        <span class="x-timer mono" id="x-timer" role="timer" aria-label="Time remaining"></span>
+      </div>
+      <div class="progress"><span id="x-prog" style="width:0"></span></div>
+      <p class="qtext" id="x-text"></p>
+      <div class="opts" id="x-opts"></div>
+      <div class="row x-nav">
+        <button class="btn" id="x-prev">Previous</button>
+        <button class="btn" id="x-flag" aria-pressed="false">Flag for review</button>
+        <span class="grow"></span>
+        <button class="btn primary" id="x-next">Next</button>
+      </div>
+      <details class="x-map" open>
+        <summary>All questions <span class="gen-note" id="x-count"></span></summary>
+        <div class="x-grid" id="x-grid"></div>
+      </details>
+      <div class="row x-foot">
+        <button class="btn small" id="x-quit">Abandon</button>
+        <span class="grow"></span>
+        <button class="btn primary" id="x-submit">Submit exam</button>
+      </div>
+      <div class="notice x-confirm" id="x-confirm" hidden>
+        <div id="x-confirm-text"></div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn primary small" id="x-yes"></button>
+          <button class="btn small" id="x-no">Keep working</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="x-done" hidden>
+      <div class="label">Estimated scaled score</div>
+      <div class="row" style="align-items:baseline;margin:6px 0 4px">
+        <span class="score" id="x-scaled"></span><span id="x-verdict"></span>
+      </div>
+      <div id="x-detail" style="color:var(--muted)"></div>
+      <p class="gen-note x-scale-note">CompTIA doesn't publish how raw scores convert to its 100-900 scale. This maps your percentage onto it in a straight line, so 750 takes about 81%. Treat it as a rough guide. The real exam also has performance-based questions; practice those in Log Labs and CVSS.</p>
+      <div class="domains" id="x-breakdown"></div>
+      <div class="row" style="margin-top:16px">
+        <button class="btn primary" id="x-again">New exam</button>
+        <button class="btn" id="x-practice">Practice the ones I missed</button>
+      </div>
+    </div>
+
+    <div class="panel" id="x-review" hidden>
+      <div class="row" style="justify-content:space-between;margin-bottom:6px">
+        <h3>Review</h3>
+        <select id="x-filter" aria-label="Which questions to review">
+          <option value="missed">Missed or unanswered</option><option value="flagged">Flagged</option><option value="all">All questions</option>
+        </select>
+      </div>
+      <div id="x-list"></div>
     </div>
   </section>
 

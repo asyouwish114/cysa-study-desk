@@ -10,7 +10,7 @@ A static study app for the CompTIA CySA+ (CS0-003) exam: practice questions, log
   Each data file adds to `window.CYSA`. Keep them as plain scripts (not ES modules or JSON + fetch)
   so the page still opens straight from disk via `file://`.
 - `js/app.js` is one IIFE, split into sections by `// ---------- Name ----------` comments
-  (State, Helpers, Tabs, Overview, Practice, Claude, Log labs, CVSS, Flashcards, Tutor, Boot).
+  (State, Helpers, Tabs, Overview, Practice, Mock exam, Claude, Log labs, CVSS, Flashcards, Tutor, Boot).
 - `js/cvss.js` is the CVSS v3.1 engine: pure functions, no DOM, and it works in both the browser and Node.
   Keep scoring logic there, not in app.js. Any change to it must keep `npm test` passing, and new
   behavior gets a test in `tests/cvss.test.mjs` with an expected score taken from the FIRST calculator.
