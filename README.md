@@ -20,9 +20,10 @@ A study app for the **CompTIA CySA+ (CS0-003)** exam, built with [Claude Code](h
   submit. Flag questions, jump around with the question grid, and pick up where you left off after a reload.
   Results give an estimated 100-900 score against the 750 pass mark, a domain breakdown and a review of every
   miss with its explanation.
-- **Log analysis labs.** Six performance-based investigations (RDP brute force, password spraying,
-  C2 beaconing, SQL injection, PsExec lateral movement, Kerberoasting). Flag the malicious lines in realistic logs, identify
-  the attack and choose the response, then get graded with a note on every line and an ATT&CK-referenced debrief.
+- **Log analysis labs.** Seven performance-based investigations (RDP brute force, password spraying,
+  C2 beaconing, SQL injection, PsExec lateral movement, Kerberoasting, and a weekly vulnerability report
+  to triage against remediation SLAs). Flag the lines that matter in realistic logs, work out what happened
+  and choose the response, then get graded with a note on every line and an ATT&CK-referenced debrief.
 
   <img src="docs/log-lab.png" alt="A graded log lab: caught, missed and wrongly flagged lines with per-line notes, answer feedback and the score breakdown" width="560">
 

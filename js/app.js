@@ -635,6 +635,7 @@ function openLab(id) {
   $("lab-tag").textContent = DOMAINS[L.d].code + " " + DOMAINS[L.d].name + " · " + L.source;
   $("lab-title").textContent = L.title;
   $("lab-brief").textContent = L.brief;
+  $("lab-ask").textContent = L.ask || "Click every line that is part of the attack";
   $("lab-submit").hidden = false;
   renderLabLog(); renderLabTasks(); updateLabHint();
   window.scrollTo(0, 0);
@@ -659,7 +660,7 @@ function renderLabLog() {
     let cls = "line" + (f ? " flag" : ""), mark = "", note = "";
     if (g) {
       cls = "line" + (r.bad && f ? " hit" : r.bad ? " miss" : f ? " false" : "");
-      mark = r.bad && f ? '<span class="mk ok">Caught</span>' : r.bad ? '<span class="mk warn">Missed</span>' : f ? '<span class="mk bad">Not malicious</span>' : "";
+      mark = r.bad && f ? '<span class="mk ok">Caught</span>' : r.bad ? '<span class="mk warn">Missed</span>' : f ? '<span class="mk bad">Wrongly flagged</span>' : "";
       if (r.note && (r.bad || f)) note = `<tr class="note"><td colspan="${span}">${esc(r.note)}</td></tr>`;
     }
     const attrs = g ? "" : ` tabindex="0" role="checkbox" aria-checked="${f}"`;

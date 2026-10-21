@@ -1,7 +1,8 @@
 // Log analysis labs (performance-based practice). Fields:
 //   id, d (domain key), title, source (log type), brief (scenario), cols (column headers),
 //   rows: [{ f: [one value per column], bad: true if part of the attack, note: shown after grading }],
-//   tasks: [{ q, o: 4 options, a: 0-based correct index, x: explanation }], debrief (root cause / takeaway).
+//   tasks: [{ q, o: 4 options, a: 0-based correct index, x: explanation }], debrief (root cause / takeaway),
+//   ask (optional step 1 instruction for labs that aren't about an attack).
 // Benign rows may carry a note too; it is shown if the student wrongly flags them.
 window.CYSA = window.CYSA || {};
 window.CYSA.labs = [
@@ -152,5 +153,33 @@ window.CYSA.labs = [
         x: "The cracked svc_sql password is in use right now, so contain it and the workstation it's coming from, then scope the damage. Resetting krbtgt twice is the fix for golden tickets. Blocking port 88 breaks domain authentication, and removing SPNs breaks the services without removing the attacker." }
     ],
     debrief: "Root cause: service accounts with human-chosen passwords that can be cracked, and RC4 still allowed. Fix: use group Managed Service Accounts (gMSA) or 25+ character random passwords, and enforce AES-only Kerberos. Detect it by alerting when one account requests many 4769 tickets with encryption type 0x17 in a short window, or plant a honeypot account with an SPN that nobody should ever request."
+  },
+  {
+    id: "lab-vuln-report", d: "rc", title: "The weekly vulnerability report", source: "Vulnerability tracker export · week 42",
+    ask: "Click every finding that must be escalated in this week's report",
+    brief: "You're preparing this week's vulnerability report for the CISO. Remediation policy: anything in CISA's Known Exploited Vulnerabilities (KEV) catalog within 14 days, whatever its score. Otherwise Critical (9.0+) within 15 days, High (7.0-8.9) within 30 and Medium (4.0-6.9) within 90. An approved risk exception with compensating controls is on track until it expires. Escalate any SLA breach, any finding without an owner, any expired exception and any finding that keeps coming back.",
+    cols: ["ID", "Asset", "Finding", "CVSS", "KEV", "Days open", "Status"],
+    rows: [
+      { f: ["V-1041", "vpn-gw01 (internet-facing)", "VPN appliance pre-auth remote code execution", "9.8", "Yes", "21", "Open: waiting for vendor maintenance window"], bad: true, note: "The worst finding on the list: KEV-listed, Critical, reachable from the internet and past both the 14-day KEV and 15-day Critical deadlines. Waiting for a routine window isn't acceptable here." },
+      { f: ["V-1043", "web-shop01", "TLS 1.0 still enabled", "5.3", "No", "40", "Open: change scheduled for day 60"], note: "Medium, 40 days into a 90-day SLA, with a fix scheduled. On track." },
+      { f: ["V-1047", "hr-db02", "Database authentication bypass", "8.8", "No", "45", "Open: no owner assigned"], bad: true, note: "High finding 15 days past its 30-day SLA, and nobody owns it. A finding without an owner never gets fixed, so this needs escalation for both reasons." },
+      { f: ["V-1050", "mri-ws03", "Operating system past end of support", "9.0", "No", "120", "Exception RX-12 approved: isolated VLAN, expires in 60 days"], note: "Looks alarming, but it's a vendor-controlled medical system (the proprietary systems inhibitor) with an approved, unexpired exception and compensating controls. Report it as accepted risk, not a breach." },
+      { f: ["V-1052", "print-srv01", "Print spooler privilege escalation", "7.8", "Yes", "18", "Open"], bad: true, note: "The trap: at 7.8 it's still inside the 30-day High SLA, but it's KEV-listed, so the 14-day deadline applies and it's 4 days late. Known exploitation outranks the CVSS band." },
+      { f: ["V-1055", "dev-test07", "Apache HTTP Server remote code execution", "9.8", "No", "6", "Closed: false positive verified (host runs IIS, evidence attached)"], note: "A scary score, but the finding was checked and shown not to apply, with evidence. Closed false positives don't need escalation." },
+      { f: ["V-1058", "erp-app01", "Weak SSH ciphers allowed", "5.9", "No", "95", "Open: ticket in backlog"], bad: true, note: "Medium, but 5 days past its 90-day SLA. Lower severity doesn't exempt it from the policy." },
+      { f: ["V-1060", "pos-* (40 terminals)", "SMB signing not required", "6.5", "No", "3", "Reopened: third time this year"], bad: true, note: "Within SLA on paper, but this is the third recurrence after rebuilds. That points to the base image, which is a reporting item in its own right." },
+      { f: ["V-1062", "file-srv03", "SMBv1 enabled", "8.1", "No", "12", "Open: fix scheduled this weekend"], note: "High, 12 days into a 30-day SLA, with the fix scheduled. On track." },
+      { f: ["V-1065", "plant-plc02", "PLC firmware denial of service", "7.5", "No", "200", "Exception RX-07 expired 10 days ago"], bad: true, note: "An exception is only valid until it expires. Once it lapses, the finding is out of policy until the risk owner renews it or it's fixed." },
+      { f: ["V-1068", "mail01", "Mail server remote code execution", "9.1", "No", "9", "Patched: awaiting verification rescan"], note: "Critical, but patched on day 9 and waiting for a rescan to confirm, well inside 15 days. On track." }
+    ],
+    tasks: [
+      { q: "Which finding belongs at the top of the report to leadership?", o: ["V-1041, the KEV-listed RCE on the internet-facing VPN gateway, past its deadline", "V-1055, because it has the highest CVSS score on the list", "V-1050, because the operating system is out of support", "V-1065, because it has been open the longest"], a: 0,
+        x: "Prioritize by real risk: known exploitation (KEV), exposure to the internet, severity and how overdue it is. V-1041 has all four. V-1055 has the same score but is a verified false positive, and V-1050 is covered by an approved exception." },
+      { q: "What should the analyst do first about V-1041?", o: ["Escalate now to the system owner and CISO and push for an emergency change or an interim mitigation, not wait for the weekly report", "Mark it as accepted risk on the owner's behalf until the vendor window", "Leave it in the weekly report and let the normal cycle handle it", "Lower its priority because a maintenance window is already planned"], a: 0,
+        x: "An actively exploited flaw on an internet-facing device can't wait for a routine report or window. An analyst can't accept risk for the business; only the risk owner can. Escalate now and propose interim mitigations, such as the vendor's workaround or restricting access to the portal." },
+      { q: "What does the repeated reopening of V-1060 most likely mean?", o: ["The golden image used to rebuild the terminals doesn't include the fix", "The scanner is producing false positives", "The SLA for Medium findings is too short", "The terminals need an approved risk exception"], a: 0,
+        x: "A finding that returns after every rebuild means the fix never reached the source. Update the base image or configuration baseline, and track the recurrence rate as a program metric." }
+    ],
+    debrief: "Root cause of a weak report: findings tracked by CVSS alone, without owners or exception expiry. Prioritize with threat context (KEV, EPSS), exposure and asset criticality, give every finding an owner and due date, review exceptions before they lapse, and fix recurring findings at the baseline. Report the trends leaders need: SLA compliance by severity, mean time to remediate, open exceptions and recurrence rate."
   }
 ];

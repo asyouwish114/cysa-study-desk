@@ -114,6 +114,7 @@ table.hist td.r, table.hist th.r { text-align: right; }
 .progress { height: 4px; background: var(--track); border-radius: 2px; overflow: hidden; margin-bottom: 18px; }
 .progress span { display: block; height: 100%; background: var(--accent); transition: width .25s; }
 .qtext { font-size: 17px; font-weight: 500; margin: 0 0 16px; max-width: 68ch; }
+.qtext, .opt, .explain, .x-item, .face .def { overflow-wrap: anywhere; }
 .opts { display: grid; gap: 8px; }
 .opt { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 11px 12px; align-items: start; }
 .opt:hover:not(:disabled) { border-color: var(--accent); }

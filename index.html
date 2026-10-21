@@ -204,13 +204,13 @@
     <div id="lab-list">
       <div class="panel" style="margin-bottom:20px">
         <h3>Log analysis labs</h3>
-        <p style="margin:4px 0 0;color:var(--muted);max-width:68ch">Performance-based practice like the real exam. Read the scenario, flag every log line that is part of the attack, identify what happened, and choose the response. You're graded on all three.</p>
+        <p style="margin:4px 0 0;color:var(--muted);max-width:68ch">Performance-based practice like the real exam. Read the scenario, flag the log lines that matter, work out what happened, and choose the response. You're graded on all three.</p>
       </div>
       <div class="lab-grid" id="lab-cards"></div>
     </div>
 
     <div id="lab-run" hidden>
-      <div class="panel" style="display:grid;gap:16px">
+      <div class="panel" style="display:grid;grid-template-columns:minmax(0,1fr);gap:16px">
         <div class="row" style="justify-content:space-between">
           <span class="tag" id="lab-tag"></span>
           <button class="btn small" id="lab-back">All labs</button>
@@ -220,7 +220,7 @@
           <p id="lab-brief" style="margin:6px 0 0;max-width:70ch"></p>
         </div>
         <div>
-          <div class="step"><span class="mono">1</span> Click every line that is part of the attack <span class="mono" id="lab-flagcount" style="color:var(--muted)"></span></div>
+          <div class="step"><span class="mono">1</span> <span id="lab-ask">Click every line that is part of the attack</span> <span class="mono" id="lab-flagcount" style="color:var(--muted)"></span></div>
           <div class="logwrap"><table class="log" id="lab-log"></table></div>
         </div>
         <div id="lab-tasks"></div>
